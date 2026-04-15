@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">kiosko PDA</string>
+    <string name="kiosk_title">Modo kiosko activo</string>
+    <string name="kiosk_status_full">Proteccion completa habilitada (Device Owner).</string>
+    <string name="kiosk_status_limited">Proteccion limitada: activa Device Owner para bloqueo total.</string>
+    <string name="enable_admin">Habilitar administrador</string>
+    <string name="allowed_apps_label">Aplicaciones permitidas</string>
+    <string name="no_allowed_apps">No hay apps permitidas instaladas.</string>
+    <string name="exit_kiosk">Salir del kiosko</string>
+    <string name="pin_dialog_title">PIN de seguridad</string>
+    <string name="pin_dialog_label">Ingresa el PIN</string>
+    <string name="pin_invalid">PIN incorrecto</string>
+    <string name="accept">Aceptar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="kiosk_exit_success">Modo kiosko desactivado</string>
+    <string name="admin_not_enabled">Administrador no activado.</string>
+    <string name="device_admin_enabled">Administrador del dispositivo activado.</string>
+    <string name="device_admin_disabled">Administrador del dispositivo desactivado.</string>
 </resources>

@@ -1,0 +1,7 @@
+{
+  "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": "com.example.kioskopda/com.example.kioskopda.admin.KioskDeviceAdminReceiver",
+  "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": "https://api.ima.gob.pa:30443/files/apk/app-debug-v2.apk",
+  "android.app.extra.PROVISIONING_DEVICE_ADMIN_SIGNATURE_CHECKSUM": "GyF3dAh7fQx34az7Fx6TABRS/4ZuNsFUL09qEk+7VhA=",
+  "android.app.extra.PROVISIONING_SKIP_ENCRYPTION": true,
+  "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": true
+}
