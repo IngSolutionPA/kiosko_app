@@ -11,18 +11,37 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.addCallback
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BatteryStd
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.SignalCellular4Bar
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,17 +50,26 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.kioskopda.kiosk.KioskConfig
 import com.example.kioskopda.kiosk.KioskManager
 import com.example.kioskopda.ui.theme.KioskoPDATheme
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private lateinit var kioskManager: KioskManager
@@ -107,6 +135,17 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 Toast.makeText(this, "No se pudo remover Device Owner", Toast.LENGTH_SHORT).show()
                             }
+                        },
+                        onRefreshStatus = {
+                            kioskManager.refreshStatus()
+                            // Re-crear el composable para actualizar estados
+                            window.decorView.postDelayed({
+                                recreate()
+                            }, 500)
+                        },
+                        onEnableDeviceOwner = {
+                            // Mostrar instrucciones
+                            showDeviceOwnerInstructions()
                         }
                     )
                 }
@@ -171,6 +210,22 @@ class MainActivity : ComponentActivity() {
     private fun refreshDeviceIdentifier() {
         deviceIdentifier = deviceIdentifierProvider.load()
     }
+
+    private fun showDeviceOwnerInstructions() {
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val command = "adb shell dpm set-device-owner com.example.kioskopda/.admin.KioskDeviceAdminReceiver"
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.device_owner_instructions_title))
+            .setMessage(getString(R.string.device_owner_instructions))
+            .setPositiveButton(getString(R.string.copy_command)) { _, _ ->
+                val clip = android.content.ClipData.newPlainText("Device Owner Command", command)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, getString(R.string.command_copied), Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
 }
 
 @Composable
@@ -180,89 +235,296 @@ fun KioskScreen(
     kioskManager: KioskManager,
     onRequestAdmin: () -> Unit,
     onExitKiosk: () -> Unit,
-    onUninstall: () -> Unit
+    onUninstall: () -> Unit,
+    onRefreshStatus: () -> Unit,
+    onEnableDeviceOwner: () -> Unit
 ) {
     val context = LocalContext.current
     val apps by rememberAllowedApps(allowedPackages = KioskConfig.allowedPackages)
-
     var showPinDialog by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(text = context.getString(R.string.kiosk_title))
+    val visibleAppSlots = remember(apps) { List(4) { index -> apps.getOrNull(index) } }
+    val imeiText = remember(deviceIdentifier) {
+        when (deviceIdentifier?.source) {
+            DeviceIdentifierSource.IMEI -> context.getString(
+                R.string.dashboard_imei_format,
+                deviceIdentifier.value
+            )
 
-        Text(
-            text = if (kioskManager.canUseFullKiosk()) {
-                context.getString(R.string.kiosk_status_full)
-            } else {
-                context.getString(R.string.kiosk_status_limited)
-            }
-        )
+            DeviceIdentifierSource.ANDROID_ID -> context.getString(
+                R.string.device_identifier_fallback_android_id,
+                deviceIdentifier.value
+            )
 
-        Text(text = context.getString(R.string.device_identifier_label))
-        Text(
-            text = when (deviceIdentifier?.source) {
-                DeviceIdentifierSource.IMEI -> deviceIdentifier.value
-                DeviceIdentifierSource.ANDROID_ID -> context.getString(
-                    R.string.device_identifier_fallback_android_id,
-                    deviceIdentifier.value
-                )
-
-                DeviceIdentifierSource.UNAVAILABLE -> context.getString(R.string.device_identifier_unavailable)
-                null -> context.getString(R.string.device_identifier_loading)
-            }
-        )
-
-        if (!kioskManager.isAdminActive()) {
-            Button(onClick = onRequestAdmin) {
-                Text(text = context.getString(R.string.enable_admin))
-            }
+            DeviceIdentifierSource.UNAVAILABLE -> context.getString(R.string.device_identifier_unavailable)
+            null -> context.getString(R.string.device_identifier_loading)
         }
+    }
+    val currentTime by produceState(initialValue = "") {
+        val formatter = SimpleDateFormat("h:mm a", Locale.forLanguageTag("es-PA"))
+        while (true) {
+            value = formatter
+                .format(Date())
+                .replace("AM", "a.m")
+                .replace("PM", "p.m")
+            delay(1_000)
+        }
+    }
 
-        Text(text = context.getString(R.string.allowed_apps_label))
+    val launchApp: (LaunchableApp) -> Unit = { app ->
+        val launchIntent = context.packageManager
+            .getLaunchIntentForPackage(app.packageName)
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        if (launchIntent != null) context.startActivity(launchIntent)
+    }
 
-        if (apps.isEmpty()) {
-            Text(text = context.getString(R.string.no_allowed_apps))
-        } else {
-            LazyColumn(
+    Column(
+        modifier = modifier
+            .background(Color(0xFF37BBD8))
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = true),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .size(38.dp)
+                    .background(Color.White, RoundedCornerShape(18.dp))
+                    .clickable { showPinDialog = true },
+                contentAlignment = Alignment.Center
             ) {
-                items(apps) { app ->
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            val launchIntent = context.packageManager
-                                .getLaunchIntentForPackage(app.packageName)
-                                ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = Color(0xFF474747)
+                )
+            }
 
-                            if (launchIntent != null) {
-                                context.startActivity(launchIntent)
-                            }
-                        }
-                    ) {
-                        Text(text = app.label)
-                    }
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(13.dp),
+                color = Color.Black
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⌂",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Text(
+                        text = context.getString(R.string.dashboard_institution),
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
 
-        TextButton(
-            modifier = Modifier.height(48.dp),
-            onClick = { showPinDialog = true }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(text = context.getString(R.string.exit_kiosk))
+            Text(
+                modifier = Modifier.weight(1f),
+                text = context.getString(R.string.dashboard_apps),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                modifier = Modifier.width(94.dp),
+                text = context.getString(R.string.dashboard_network),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
         }
 
-        TextButton(
-            modifier = Modifier.height(48.dp),
-            onClick = { onUninstall() }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(text = context.getString(R.string.uninstall_device_owner))
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(180.dp),
+                color = Color(0xFFF0F0F0),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    visibleAppSlots.chunked(2).forEachIndexed { rowIndex, row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            row.forEachIndexed { colIndex, app ->
+                                val tileColor = if (rowIndex == 0 && colIndex == 0) {
+                                    Color(0xFFF59A38)
+                                } else {
+                                    Color(0xFF4BB8E3)
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(54.dp)
+                                        .background(tileColor, RoundedCornerShape(14.dp))
+                                        .clickable(enabled = app != null) { app?.let(launchApp) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    when {
+                                        rowIndex == 0 && colIndex == 0 -> {
+                                            Text(
+                                                text = context.getString(R.string.dashboard_pda_label),
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        }
+
+                                        rowIndex == 0 && colIndex == 1 -> {
+                                            Icon(
+                                                imageVector = Icons.Filled.CameraAlt,
+                                                contentDescription = null,
+                                                tint = Color.White
+                                            )
+                                        }
+
+                                        rowIndex == 1 && colIndex == 0 -> {
+                                            Icon(
+                                                imageVector = Icons.Filled.Image,
+                                                contentDescription = null,
+                                                tint = Color.White
+                                            )
+                                        }
+
+                                        else -> {
+                                            Icon(
+                                                imageVector = Icons.Filled.EditNote,
+                                                contentDescription = null,
+                                                tint = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .width(94.dp)
+                    .height(180.dp),
+                color = Color(0xFFF0F0F0),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = currentTime,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color(0xFF333333)
+                    )
+                    DividerLine()
+                    Icon(Icons.Filled.BatteryStd, contentDescription = null, tint = Color(0xFF202020))
+                    DividerLine()
+                    Icon(Icons.Filled.Wifi, contentDescription = null, tint = Color(0xFF202020))
+                    DividerLine()
+                    Icon(Icons.Filled.SignalCellular4Bar, contentDescription = null, tint = Color(0xFF202020))
+                }
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            color = Color(0xFFEFEFEF),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MailOutline,
+                    contentDescription = null,
+                    tint = Color(0xFFC2C2C2)
+                )
+                Text(
+                    text = context.getString(R.string.dashboard_no_messages),
+                    color = Color(0xFFB7B7B7),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = imeiText,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = context.getString(R.string.dashboard_managed_by_it),
+                color = Color.White,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        // Mantenemos controles de soporte solo cuando aun no esta en full-kiosk.
+        if (!kioskManager.canUseFullKiosk()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!kioskManager.isAdminActive()) {
+                    Button(onClick = onRequestAdmin, modifier = Modifier.fillMaxWidth()) {
+                        Text(text = context.getString(R.string.enable_admin))
+                    }
+                }
+                Button(onClick = onEnableDeviceOwner, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = context.getString(R.string.enable_device_owner))
+                }
+                Button(onClick = onRefreshStatus, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = context.getString(R.string.refresh_status))
+                }
+                TextButton(onClick = onUninstall, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = context.getString(R.string.uninstall_device_owner), color = Color.White)
+                }
+            }
         }
     }
 
@@ -275,6 +537,16 @@ fun KioskScreen(
             }
         )
     }
+}
+
+@Composable
+private fun DividerLine() {
+    Spacer(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(Color(0xFFD8D8D8))
+    )
 }
 
 @Preview(showBackground = true)
@@ -290,7 +562,9 @@ fun KioskPreview() {
             kioskManager = KioskManager(LocalContext.current),
             onRequestAdmin = {},
             onExitKiosk = {},
-            onUninstall = {}
+            onUninstall = {},
+            onRefreshStatus = {},
+            onEnableDeviceOwner = {}
         )
     }
 }

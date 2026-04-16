@@ -23,4 +23,18 @@
     <string name="imei_permission_denied">No se concedió permiso para leer el IMEI.</string>
     <string name="uninstall_device_owner">Desinstalar (remover Device Owner)</string>
     <string name="uninstall_success">Device Owner removido. La app será desinstalada.</string>
+    <string name="refresh_status">Refrescar estado</string>
+    <string name="enable_device_owner">Habilitar Device Owner (ADB)</string>
+    <string name="device_owner_instructions_title">Habilitar Device Owner</string>
+    <string name="device_owner_instructions">Para habilitar Device Owner, ejecuta en tu PC:\n\nadb shell dpm set-device-owner com.example.kioskopda/.admin.KioskDeviceAdminReceiver\n\nLuego presiona "Refrescar estado".</string>
+    <string name="copy_command">Copiar comando</string>
+    <string name="command_copied">Comando copiado al portapapeles</string>
+    <string name="dashboard_institution">Instituto de Mercadeo Agropecuario</string>
+    <string name="dashboard_apps">APPS</string>
+    <string name="dashboard_network">RED</string>
+    <string name="dashboard_no_messages">No tiene mensajes nuevos</string>
+    <string name="dashboard_managed_by_it">Dispositivo administrado por Informatica</string>
+    <string name="dashboard_imei_format">IMEI: %1$s</string>
+    <string name="dashboard_pda_label">PDA</string>
+    <string name="dashboard_empty_tile">--</string>
 </resources>

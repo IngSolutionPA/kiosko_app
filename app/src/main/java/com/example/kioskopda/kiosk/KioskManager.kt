@@ -94,5 +94,17 @@ class KioskManager(private val context: Context) {
             true
         }.getOrNull() == true
     }
+
+    /**
+     * Verifica nuevamente el estado de Device Owner.
+     * Útil después de ejecutar comandos ADB.
+     */
+    fun refreshStatus() {
+        // Fuerza la re-evaluación de los estados
+        dpm?.let {
+            it.isDeviceOwnerApp(context.packageName)
+            it.isAdminActive(adminComponent)
+        }
+    }
 }
 
