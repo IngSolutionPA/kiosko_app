@@ -1,5 +1,6 @@
 package com.example.kioskopda.kiosk
 
+import android.Manifest
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -34,6 +35,7 @@ class KioskManager(private val context: Context) {
 
         val lockTaskPackages = (allowedPackages + context.packageName).toTypedArray()
         dpm?.setLockTaskPackages(adminComponent, lockTaskPackages)
+        grantPhoneStatePermission()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             dpm?.setLockTaskFeatures(adminComponent, DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
@@ -55,6 +57,19 @@ class KioskManager(private val context: Context) {
         }
     }
 
+    fun grantPhoneStatePermission() {
+        if (!canUseFullKiosk()) return
+
+        runCatching {
+            dpm?.setPermissionGrantState(
+                adminComponent,
+                context.packageName,
+                Manifest.permission.READ_PHONE_STATE,
+                DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
+            )
+        }
+    }
+
     fun startLockTask(activity: Activity) {
         if (!canUseFullKiosk()) return
         runCatching {
@@ -67,6 +82,17 @@ class KioskManager(private val context: Context) {
         runCatching {
             activity.stopLockTask()
         }
+    }
+
+    /**
+     * Remueve el Device Owner desde dentro de la app.
+     * Solo funciona si la app está configurada como Device Owner.
+     */
+    fun removeDeviceOwner(): Boolean {
+        return runCatching {
+            dpm?.clearDeviceOwnerApp(context.packageName)
+            true
+        }.getOrNull() == true
     }
 }
 

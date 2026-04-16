@@ -1,5 +1,6 @@
 package com.example.kioskopda
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -44,6 +45,8 @@ import com.example.kioskopda.ui.theme.KioskoPDATheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var kioskManager: KioskManager
+    private lateinit var deviceIdentifierProvider: DeviceIdentifierProvider
+    private var deviceIdentifier by mutableStateOf<DeviceIdentifier?>(null)
 
     private val adminLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -53,9 +56,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val phoneStatePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        refreshDeviceIdentifier()
+
+        if (!isGranted) {
+            Toast.makeText(this, getString(R.string.imei_permission_denied), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         kioskManager = KioskManager(this)
+        deviceIdentifierProvider = DeviceIdentifierProvider(this)
+        refreshDeviceIdentifier()
 
         enableEdgeToEdge()
         applyImmersiveMode()
@@ -71,6 +86,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
+                        deviceIdentifier = deviceIdentifier,
                         kioskManager = kioskManager,
                         onRequestAdmin = {
                             adminLauncher.launch(kioskManager.requestEnableDeviceAdminIntent())
@@ -78,11 +94,26 @@ class MainActivity : ComponentActivity() {
                         onExitKiosk = {
                             kioskManager.stopLockTask(this)
                             Toast.makeText(this, getString(R.string.kiosk_exit_success), Toast.LENGTH_SHORT).show()
+                        },
+                        onUninstall = {
+                            if (kioskManager.removeDeviceOwner()) {
+                                Toast.makeText(this, getString(R.string.uninstall_success), Toast.LENGTH_SHORT).show()
+                                // Dar tiempo para que el toast se vea
+                                window.decorView.postDelayed({
+                                    startActivity(Intent(Intent.ACTION_DELETE).apply {
+                                        data = android.net.Uri.parse("package:${packageName}")
+                                    })
+                                }, 1500)
+                            } else {
+                                Toast.makeText(this, "No se pudo remover Device Owner", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                 }
             }
         }
+
+        ensurePhoneStatePermission()
     }
 
     override fun onResume() {
@@ -92,6 +123,14 @@ class MainActivity : ComponentActivity() {
             kioskManager.applyKioskPolicies(KioskConfig.allowedPackages)
             kioskManager.startLockTask(this)
         }
+
+        refreshDeviceIdentifier()
+    }
+
+    override fun onDestroy() {
+        // Liberar lock task para que ADB/Android Studio pueda reinstalar sin errores
+        runCatching { stopLockTask() }
+        super.onDestroy()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -108,14 +147,40 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
+
+    private fun ensurePhoneStatePermission() {
+        if (!deviceIdentifierProvider.hasTelephonyFeature()) {
+            refreshDeviceIdentifier()
+            return
+        }
+
+        if (deviceIdentifierProvider.hasPhoneStatePermission()) {
+            refreshDeviceIdentifier()
+            return
+        }
+
+        if (kioskManager.canUseFullKiosk()) {
+            kioskManager.grantPhoneStatePermission()
+            refreshDeviceIdentifier()
+            return
+        }
+
+        phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+    }
+
+    private fun refreshDeviceIdentifier() {
+        deviceIdentifier = deviceIdentifierProvider.load()
+    }
 }
 
 @Composable
 fun KioskScreen(
     modifier: Modifier = Modifier,
+    deviceIdentifier: DeviceIdentifier?,
     kioskManager: KioskManager,
     onRequestAdmin: () -> Unit,
-    onExitKiosk: () -> Unit
+    onExitKiosk: () -> Unit,
+    onUninstall: () -> Unit
 ) {
     val context = LocalContext.current
     val apps by rememberAllowedApps(allowedPackages = KioskConfig.allowedPackages)
@@ -133,6 +198,20 @@ fun KioskScreen(
                 context.getString(R.string.kiosk_status_full)
             } else {
                 context.getString(R.string.kiosk_status_limited)
+            }
+        )
+
+        Text(text = context.getString(R.string.device_identifier_label))
+        Text(
+            text = when (deviceIdentifier?.source) {
+                DeviceIdentifierSource.IMEI -> deviceIdentifier.value
+                DeviceIdentifierSource.ANDROID_ID -> context.getString(
+                    R.string.device_identifier_fallback_android_id,
+                    deviceIdentifier.value
+                )
+
+                DeviceIdentifierSource.UNAVAILABLE -> context.getString(R.string.device_identifier_unavailable)
+                null -> context.getString(R.string.device_identifier_loading)
             }
         )
 
@@ -178,6 +257,13 @@ fun KioskScreen(
         ) {
             Text(text = context.getString(R.string.exit_kiosk))
         }
+
+        TextButton(
+            modifier = Modifier.height(48.dp),
+            onClick = { onUninstall() }
+        ) {
+            Text(text = context.getString(R.string.uninstall_device_owner))
+        }
     }
 
     if (showPinDialog) {
@@ -196,9 +282,15 @@ fun KioskScreen(
 fun KioskPreview() {
     KioskoPDATheme {
         KioskScreen(
+            deviceIdentifier = DeviceIdentifier(
+                imei = "359881234567890",
+                value = "359881234567890",
+                source = DeviceIdentifierSource.IMEI
+            ),
             kioskManager = KioskManager(LocalContext.current),
             onRequestAdmin = {},
-            onExitKiosk = {}
+            onExitKiosk = {},
+            onUninstall = {}
         )
     }
 }

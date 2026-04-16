@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <queries>
@@ -66,6 +67,15 @@
                 android:resource="@xml/device_admin_receiver" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Receiver de emergencia para desarrollo: permite remover Device Owner via ADB -->
+        <receiver
+            android:name=".admin.AdbUnlockReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.kioskopda.CLEAR_DEVICE_OWNER" />
             </intent-filter>
         </receiver>
 

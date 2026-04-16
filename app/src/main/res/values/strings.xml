@@ -16,4 +16,11 @@
     <string name="admin_not_enabled">Administrador no activado.</string>
     <string name="device_admin_enabled">Administrador del dispositivo activado.</string>
     <string name="device_admin_disabled">Administrador del dispositivo desactivado.</string>
+    <string name="device_identifier_label">IMEI del dispositivo</string>
+    <string name="device_identifier_loading">Cargando identificador…</string>
+    <string name="device_identifier_unavailable">IMEI no disponible en este dispositivo.</string>
+    <string name="device_identifier_fallback_android_id">IMEI no disponible por políticas del sistema. Mostrando ANDROID_ID: %1$s</string>
+    <string name="imei_permission_denied">No se concedió permiso para leer el IMEI.</string>
+    <string name="uninstall_device_owner">Desinstalar (remover Device Owner)</string>
+    <string name="uninstall_success">Device Owner removido. La app será desinstalada.</string>
 </resources>
