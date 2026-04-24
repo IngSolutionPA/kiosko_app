@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -212,13 +213,20 @@ fun KioskScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+
+                    // FILA 1
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+
                         AppTile(
                             modifier = Modifier.weight(1f),
                             color = Color(0xFFF59A38),
@@ -249,10 +257,14 @@ fun KioskScreen(
                         }
                     }
 
+                    // FILA 2
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+
                         AppTile(
                             modifier = Modifier.weight(1f),
                             color = Color(0xFF4BB8E3),
@@ -415,7 +427,7 @@ private fun AppTile(
 ) {
     Box(
         modifier = modifier
-            .height(54.dp)
+            .fillMaxSize()
             .background(color, RoundedCornerShape(14.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
