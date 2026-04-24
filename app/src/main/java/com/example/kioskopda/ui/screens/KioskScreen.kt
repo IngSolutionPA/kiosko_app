@@ -1,8 +1,6 @@
 package com.example.kioskopda.ui.screens
 
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +48,6 @@ import com.example.kioskopda.DeviceIdentifier
 import com.example.kioskopda.DeviceIdentifierSource
 import com.example.kioskopda.ui.components.DividerLine
 import com.example.kioskopda.R
-import com.example.kioskopda.kiosk.KioskConfig
 import com.example.kioskopda.kiosk.KioskManager
 import com.example.kioskopda.ui.theme.KioskoPDATheme
 import com.example.kioskopda.ui.utils.KioskShortcutType
@@ -59,8 +56,6 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.collections.chunked
-import kotlin.collections.forEachIndexed
 
 @Composable
 fun KioskScreen(
@@ -104,25 +99,28 @@ fun KioskScreen(
         }
     }
 
-    val openShortcut: (Int, Int) -> Unit = { rowIndex, colIndex ->
-        when {
-            rowIndex == 0 && colIndex == 0 -> {
-                openKioskShortcut(context, KioskShortcutType.PDA)
-            }
+    val batteryLevel by produceState(initialValue = 0) {
+        val intent = context.registerReceiver(
+            null,
+            android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        )
 
-            rowIndex == 0 && colIndex == 1 -> {
-                openKioskShortcut(context, KioskShortcutType.CAMERA)
-            }
+        val level = intent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
 
-            rowIndex == 1 && colIndex == 0 -> {
-                openKioskShortcut(context, KioskShortcutType.GALLERY)
-            }
-
-            rowIndex == 1 && colIndex == 1 -> {
-                openKioskShortcut(context, KioskShortcutType.NOTES)
-            }
+        value = if (level >= 0 && scale > 0) {
+            (level * 100) / scale
+        } else {
+            0
         }
     }
+
+    val batteryColor = when {
+        batteryLevel >= 60 -> Color(0xFF4CAF50) // verde
+        batteryLevel >= 30 -> Color(0xFFFFA000) // naranja
+        else -> Color(0xFFE53935) // rojo
+    } //No es obligatorio, se quita si no les gusta.
+
 
     Column(
         modifier = modifier
@@ -302,12 +300,25 @@ fun KioskScreen(
                 ) {
                     Text(
                         text = currentTime,
+                        modifier = Modifier.fillMaxWidth(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = Color(0xFF333333)
+                        color = Color(0xFF333333),
+                        textAlign = TextAlign.Center
                     )
                     DividerLine()
-                    Icon(Icons.Filled.BatteryStd, contentDescription = null, tint = Color(0xFF202020))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Filled.BatteryStd,
+                            contentDescription = null,
+                            tint = batteryColor
+                        )
+
+                        Text(
+                            text = "$batteryLevel%",
+                            color = batteryColor
+                        )
+                    }
                     DividerLine()
                     Icon(Icons.Filled.Wifi, contentDescription = null, tint = Color(0xFF202020))
                     DividerLine()
