@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.ima.gob.pa</domain>
+        <trust-anchors>
+            <!-- Acepta CAs del sistema para este dominio -->
+            <certificates src="system" />
+            <!-- Acepta también CAs de usuario (para certificados autofirmados instalados) -->
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
+
