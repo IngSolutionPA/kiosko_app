@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kioskopda.DeviceIdentifier
 import com.example.kioskopda.DeviceIdentifierSource
 import com.example.kioskopda.ui.components.DividerLine
@@ -71,6 +72,7 @@ fun KioskScreen(
 ) {
     val context = LocalContext.current
     var showPinDialog by remember { mutableStateOf(false) }
+    val exitPinViewModel: ExitPinViewModel = viewModel()
 
     val imeiText = remember(deviceIdentifier) {
         val value = deviceIdentifier?.value ?: ""
@@ -89,6 +91,9 @@ fun KioskScreen(
                 context.getString(R.string.device_identifier_loading)
         }
     }
+
+    // IMEI puro para pasarlo al ViewModel
+    val rawImei = remember(deviceIdentifier) { deviceIdentifier?.value ?: "" }
     val currentTime by produceState(initialValue = "") {
         val formatter = SimpleDateFormat("h:mm a", Locale.forLanguageTag("es-PA"))
         while (true) {
@@ -413,7 +418,9 @@ fun KioskScreen(
             onPinOk = {
                 closeDialog()
                 onExitKiosk()
-            }
+            },
+            imei = rawImei,
+            viewModel = exitPinViewModel
         )
     }
 }

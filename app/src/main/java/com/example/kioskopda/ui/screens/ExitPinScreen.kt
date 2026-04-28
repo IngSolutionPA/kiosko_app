@@ -18,9 +18,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,42 +40,52 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kioskopda.R
-import com.example.kioskopda.kiosk.KioskConfig
-
 
 @Composable
 fun ExitPinScreen(
     onCancel: () -> Unit,
-    onPinOk: () -> Unit
+    onPinOk: () -> Unit,
+    imei: String = "",
+    viewModel: ExitPinViewModel
 ) {
     val context = LocalContext.current
     var pin by remember { mutableStateOf("") }
-    var showError by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
 
     val focusRequester = remember { FocusRequester() }
 
-    // ============================
-    // CONTENEDOR PRINCIPAL (pantalla completa)
-    // ============================
+    // Cuando el API responde Success, invocar onPinOk
+    LaunchedEffect(uiState) {
+        if (uiState is PinUiState.Success) {
+            viewModel.resetState()
+            onPinOk()
+        }
+    }
+
+    val isLoading = uiState is PinUiState.Loading
+    val showError = uiState is PinUiState.Error || uiState is PinUiState.NetworkError
+
+    val errorMensaje = when (val s = uiState) {
+        is PinUiState.Error -> s.mensaje
+        is PinUiState.NetworkError -> s.mensaje
+        else -> ""
+    }
+    val intentosText = when (val s = uiState) {
+        is PinUiState.Error -> if (s.intentosRestantes >= 0) "Quedan ${s.intentosRestantes} intentos" else ""
+        else -> ""
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF35BDD9))
     ) {
-
-        // ============================
-        // CONTENIDO CENTRADO (CARD)
-        // ============================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // ============================
-            // TEXTO SUPERIOR
-            // ============================
             Text(
                 text = "¿Quieres salir del modo kiosko?",
                 color = Color.White,
@@ -82,18 +95,12 @@ fun ExitPinScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ============================
-            // CONTENEDOR DE LAS CARDS
-            // ============================
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             ) {
-
-                // ============================
                 // CARD NARANJA (HEADER)
-                // ============================
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -115,9 +122,7 @@ fun ExitPinScreen(
                     }
                 }
 
-                // ============================
                 // CARD BLANCA (CUERPO)
-                // ============================
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -134,15 +139,13 @@ fun ExitPinScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // ============================
                         // INPUT INVISIBLE (OTP real)
-                        // ============================
                         BasicTextField(
                             value = pin,
                             onValueChange = {
                                 if (it.length <= 4 && it.all { c -> c.isDigit() }) {
                                     pin = it
-                                    showError = false
+                                    if (showError) viewModel.resetState()
                                 }
                             },
                             modifier = Modifier
@@ -152,22 +155,19 @@ fun ExitPinScreen(
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.NumberPassword
                             ),
-                            singleLine = true
+                            singleLine = true,
+                            enabled = !isLoading
                         )
 
-                        // ============================
                         // CAJITAS OTP
-                        // ============================
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.clickable {
-                                focusRequester.requestFocus()
+                                if (!isLoading) focusRequester.requestFocus()
                             }
                         ) {
                             repeat(4) { index ->
-
                                 val char = pin.getOrNull(index)?.toString() ?: ""
-
                                 val isActive = index == pin.length && pin.length < 4
                                 val isFilled = index < pin.length
 
@@ -177,7 +177,6 @@ fun ExitPinScreen(
                                     isFilled -> Color(0xFFF9963B)
                                     else -> Color(0xFFD9D9D9)
                                 }
-
                                 val backgroundColor = when {
                                     showError && isFilled -> Color(0xFFFFF1F1)
                                     isActive -> Color(0xFFFFF0E3)
@@ -188,11 +187,7 @@ fun ExitPinScreen(
                                     modifier = Modifier
                                         .size(50.dp)
                                         .background(backgroundColor, RoundedCornerShape(14.dp))
-                                        .border(
-                                            2.dp,
-                                            borderColor,
-                                            RoundedCornerShape(14.dp)
-                                        ),
+                                        .border(2.dp, borderColor, RoundedCornerShape(14.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -207,9 +202,7 @@ fun ExitPinScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // ============================
-                        // CAJA DE ERROR
-                        // ============================
+                        // CAJA DE ERROR / ESTADO
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -227,39 +220,45 @@ fun ExitPinScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = if (showError) "Pin Incorrecto" else "Ingrese el PIN",
-                                        color = if (showError) Color.Red else Color.Gray,
-                                        fontWeight = FontWeight.Bold
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        color = Color(0xFFF9963B),
+                                        modifier = Modifier.size(32.dp)
                                     )
-                                    Text(
-                                        text = if (showError) "Quedan 2 intentos" else "",
-                                        fontSize = 11.sp
-                                    )
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = if (showError) errorMensaje else "Ingrese el PIN",
+                                            color = if (showError) Color.Red else Color.Gray,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                        if (intentosText.isNotEmpty()) {
+                                            Text(
+                                                text = intentosText,
+                                                fontSize = 11.sp,
+                                                color = Color(0xFF888888)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // ============================
                         // BOTÓN AUTORIZAR
-                        // ============================
                         Button(
                             onClick = {
-                                if (pin == KioskConfig.exitPin) {
-                                    onPinOk()
-                                } else {
-                                    showError = true
+                                if (!isLoading && pin.length == 4) {
+                                    viewModel.validatePin(pin, imei)
                                 }
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(60.dp),
                             shape = RoundedCornerShape(18.dp),
+                            enabled = !isLoading && pin.length == 4,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF63CFE8)
                             )
@@ -269,15 +268,17 @@ fun ExitPinScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // ============================
                         // BOTÓN CANCELAR
-                        // ============================
                         Button(
-                            onClick = onCancel,
+                            onClick = {
+                                viewModel.resetState()
+                                onCancel()
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(60.dp),
                             shape = RoundedCornerShape(18.dp),
+                            enabled = !isLoading,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF2D2D2D)
                             )
@@ -289,9 +290,7 @@ fun ExitPinScreen(
             }
         }
 
-        // ============================
         // TEXTO FIJO ABAJO
-        // ============================
         Text(
             text = context.getString(R.string.dashboard_managed_by_it),
             color = Color.White,
