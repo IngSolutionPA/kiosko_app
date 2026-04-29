@@ -26,6 +26,16 @@ interface KioscoApiService {
         @Field("imei") imei: String
     ): Response<LoginResponse>
 
+    @POST("kiosco/validacion/")
+    suspend fun postValidacion(
+        @Body request: ValidacionRequest
+    ): Response<ValidacionResponse>
+
+    @POST("kiosco/notificacion/")
+    suspend fun postNotificacion(
+        @Body request: NotificacionRequest
+    ): Response<NotificacionResponse>
+
     @GET("kiosco/notificacion_kiosco/")
     suspend fun getNotificaciones(
         @Query("page") page: Int = 1,

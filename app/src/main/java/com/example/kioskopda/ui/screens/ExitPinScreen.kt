@@ -50,6 +50,8 @@ fun ExitPinScreen(
 ) {
     val context = LocalContext.current
     var pin by remember { mutableStateOf("") }
+    var isNotifying by remember { mutableStateOf(false) }
+    var wasNotified by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
 
     val focusRequester = remember { FocusRequester() }
@@ -72,7 +74,19 @@ fun ExitPinScreen(
         DeviceBlockedScreen(
             imei = imei,
             isChecking = isCheckingUnblock,
-            onCheckUnblock = { viewModel.checkUnblock(imei) }
+            isNotifying = isNotifying,
+            wasNotified = wasNotified,
+            onNotify = {
+                isNotifying = true
+
+                viewModel.notifyBlockedDevice(imei) { ok ->
+                    wasNotified = ok
+                    isNotifying = false
+                }
+            },
+            onCheckUnblock = {
+                viewModel.checkUnblock(imei)
+            }
         )
         return
     }

@@ -35,6 +35,9 @@ import com.example.kioskopda.R
 fun DeviceBlockedScreen(
     imei: String,
     isChecking: Boolean,
+    isNotifying: Boolean,
+    wasNotified: Boolean,
+    onNotify: () -> Unit,
     onCheckUnblock: () -> Unit
 ) {
     val context = LocalContext.current
@@ -138,8 +141,14 @@ fun DeviceBlockedScreen(
 
                     // BOTÓN VERIFICAR DESBLOQUEO
                     Button(
-                        onClick = onCheckUnblock,
-                        enabled = !isChecking,
+                        onClick = {
+                            if (wasNotified) {
+                                onCheckUnblock()
+                            } else {
+                                onNotify()
+                            }
+                        },
+                        enabled = !isChecking && !isNotifying,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -149,7 +158,7 @@ fun DeviceBlockedScreen(
                             disabledContainerColor = Color(0xFFDDAA77)
                         )
                     ) {
-                        if (isChecking) {
+                        if (isChecking || isNotifying) {
                             CircularProgressIndicator(
                                 color = Color.White,
                                 modifier = Modifier.size(22.dp),
@@ -157,7 +166,7 @@ fun DeviceBlockedScreen(
                             )
                         } else {
                             Text(
-                                "Verificar desbloqueo",
+                                text = if (wasNotified) "Verificar desbloqueo" else "Notificar",
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
