@@ -68,37 +68,9 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(innerPadding),
                         deviceIdentifier = deviceIdentifier,
-                        kioskManager = kioskManager,
-                        onRequestAdmin = {
-                            adminLauncher.launch(kioskManager.requestEnableDeviceAdminIntent())
-                        },
                         onExitKiosk = {
                             kioskManager.stopLockTask(this)
                             Toast.makeText(this, getString(R.string.kiosk_exit_success), Toast.LENGTH_SHORT).show()
-                        },
-                        onUninstall = {
-                            if (kioskManager.removeDeviceOwner()) {
-                                Toast.makeText(this, getString(R.string.uninstall_success), Toast.LENGTH_SHORT).show()
-                                // Dar tiempo para que el toast se vea
-                                window.decorView.postDelayed({
-                                    startActivity(Intent(Intent.ACTION_DELETE).apply {
-                                        data = android.net.Uri.parse("package:${packageName}")
-                                    })
-                                }, 1500)
-                            } else {
-                                Toast.makeText(this, "No se pudo remover Device Owner", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onRefreshStatus = {
-                            kioskManager.refreshStatus()
-                            // Re-crear el composable para actualizar estados
-                            window.decorView.postDelayed({
-                                recreate()
-                            }, 500)
-                        },
-                        onEnableDeviceOwner = {
-                            // Mostrar instrucciones
-                            showDeviceOwnerInstructions()
                         }
                     )
                 }

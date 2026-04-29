@@ -18,6 +18,50 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kioskopda.network.NotificacionItem
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+// Helpers de prioridad reutilizables
+fun prioridadLabel(p: Int) = when (p) { 1 -> "Alta"; 2 -> "Media"; else -> "Baja" }
+fun prioridadBgColor(p: Int) = when (p) {
+    1 -> Color(0xFFFDECEC)
+    2 -> Color(0xFFFFF4E5)
+    else -> Color(0xFFEAF7EE)
+}
+
+fun prioridadTextColor(p: Int) = when (p) {
+    1 -> Color(0xFFB65C5C)
+    2 -> Color(0xFFB7791F)
+    else -> Color(0xFF4F8A65)
+}
+
+fun formatBackendTime(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    return runCatching {
+        val input = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val output = SimpleDateFormat("h:mm a", Locale.forLanguageTag("es-PA"))
+        output.format(input.parse(raw)!!)
+            .replace("AM", "a.m")
+            .replace("PM", "p.m")
+    }.getOrNull() ?: raw
+}
+
+@Composable
+fun PrioridadBadge(prioridad: Int) {
+    Box(
+        modifier = Modifier
+            .background(prioridadBgColor(prioridad), RoundedCornerShape(50)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = prioridadLabel(prioridad),
+            color = prioridadTextColor(prioridad),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        )
+    }
+}
 
 @Composable
 fun NotificacionDetailScreen(
@@ -27,7 +71,7 @@ fun NotificacionDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF37BBD8))
+            .background(Color(0xFFEDF2F7))
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -39,19 +83,19 @@ fun NotificacionDetailScreen(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .background(Color.White, RoundedCornerShape(18.dp))
+                    .background(Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Volver",
-                    tint = Color(0xFF474747)
+                    tint = Color(0xFF4A5568)
                 )
             }
             Text(
                 text = "Detalle del mensaje",
-                color = Color.White,
+                color = Color(0xFF2D3748),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -61,8 +105,9 @@ fun NotificacionDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            color = Color(0xFFEFEFEF),
-            shape = RoundedCornerShape(18.dp)
+            color = Color(0xFFFFFFFF),
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = 2.dp
         ) {
             Column(
                 modifier = Modifier
@@ -71,44 +116,67 @@ fun NotificacionDetailScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Icono
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(Color(0xFF37BBD8), RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center
+                // Icono + badge prioridad en misma fila
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.MailOutline,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(Color(0xFF3182CE), RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MailOutline,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    PrioridadBadge(item.prioridad)
                 }
 
                 Text(
                     text = item.titulo,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = Color(0xFF222222)
+                    color = Color(0xFF2D3748)
                 )
 
-                HorizontalDivider(color = Color(0xFFDDDDDD))
+                // Fecha y hora si están disponibles
+                if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!item.fecha.isNullOrBlank()) {
+                            Text(
+                                text = "📅 ${item.fecha}",
+                                fontSize = 12.sp,
+                                color = Color(0xFF718096)
+                            )
+                        }
+                        if (!item.hora.isNullOrBlank()) {
+                            Text(
+                                text = "🕐 ${formatBackendTime(item.hora)}",
+                                fontSize = 12.sp,
+                                color = Color(0xFF718096)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFE2E8F0))
 
                 Text(
                     text = item.mensaje,
                     fontSize = 15.sp,
-                    color = Color(0xFF444444),
+                    color = Color(0xFF4A5568),
                     lineHeight = 22.sp
-                )
-
-                Text(
-                    text = "Prioridad: ${item.prioridad}",
-                    fontSize = 12.sp,
-                    color = Color(0xFF999999)
                 )
             }
         }
     }
 }
-

@@ -6,7 +6,10 @@ data class NotificacionItem(
     val id: Int,
     val titulo: String,
     val mensaje: String,
-    val prioridad: Int
+    val prioridad: Int,
+    val estado: Int = 1,
+    val fecha: String? = null,
+    val hora: String? = null
 )
 
 data class NotificacionPagination(

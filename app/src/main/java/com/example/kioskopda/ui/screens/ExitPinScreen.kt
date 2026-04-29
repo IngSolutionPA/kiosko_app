@@ -3,6 +3,7 @@ package com.example.kioskopda.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,7 +85,14 @@ fun ExitPinScreen(
     val isCheckingUnblock = uiState is PinUiState.CheckingUnblock
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            // Bloquea que los toques pasen al composable que está debajo
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
     ) {
         if (isBlocked || isCheckingUnblock) {
             DeviceBlockedScreen(
@@ -140,7 +148,7 @@ fun ExitPinScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF35BDD9))
+                    .background(Color(0xFFEDF2F7))   // mismo fondo suave
             ) {
                 Column(
                     modifier = Modifier
@@ -150,7 +158,7 @@ fun ExitPinScreen(
                 ) {
                     Text(
                         text = "¿Quieres salir del modo kiosko?",
-                        color = Color.White,
+                        color = Color(0xFF2D3748),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -167,7 +175,7 @@ fun ExitPinScreen(
                                 .fillMaxWidth()
                                 .height(120.dp),
                             shape = RoundedCornerShape(22.dp),
-                            color = Color(0xFFF9963B)
+                            color = Color(0xFF3182CE)   // azul corporativo
                         ) {
                             Box(
                                 contentAlignment = Alignment.TopCenter,
@@ -188,7 +196,8 @@ fun ExitPinScreen(
                                 .fillMaxWidth()
                                 .padding(top = 50.dp),
                             shape = RoundedCornerShape(22.dp),
-                            color = Color(0xFFF3F3F3)
+                            color = Color(0xFFFFFFFF),
+                            shadowElevation = 2.dp
                         ) {
                             Column(
                                 modifier = Modifier
@@ -229,16 +238,16 @@ fun ExitPinScreen(
                                         val isFilled = index < pin.length
 
                                         val borderColor = when {
-                                            showError -> Color(0xFFFF5A5A)
-                                            isActive -> Color(0xFFF9963B)
-                                            isFilled -> Color(0xFFF9963B)
-                                            else -> Color(0xFFD9D9D9)
+                                            showError -> Color(0xFFE53E3E)
+                                            isActive -> Color(0xFF3182CE)
+                                            isFilled -> Color(0xFF3182CE)
+                                            else -> Color(0xFFCBD5E0)
                                         }
 
                                         val backgroundColor = when {
-                                            showError && isFilled -> Color(0xFFFFF1F1)
-                                            isActive -> Color(0xFFFFF0E3)
-                                            else -> Color.White
+                                            showError && isFilled -> Color(0xFFFFF5F5)
+                                            isActive -> Color(0xFFEBF8FF)
+                                            else -> Color(0xFFF7FAFC)
                                         }
 
                                         Box(
@@ -265,28 +274,28 @@ fun ExitPinScreen(
                                         .fillMaxWidth()
                                         .height(70.dp),
                                     shape = RoundedCornerShape(18.dp),
-                                    color = Color.White
+                                    color = Color(0xFFF7FAFC)
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .border(
                                                 1.dp,
-                                                if (showError) Color(0xFFF9963B) else Color(0xFFE2E2E2),
+                                                if (showError) Color(0xFFE53E3E) else Color(0xFFE2E8F0),
                                                 RoundedCornerShape(18.dp)
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (isLoading) {
                                             CircularProgressIndicator(
-                                                color = Color(0xFFF9963B),
+                                                color = Color(0xFF3182CE),
                                                 modifier = Modifier.size(32.dp)
                                             )
                                         } else {
                                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                 Text(
                                                     text = if (showError) errorMensaje else "Ingrese el PIN",
-                                                    color = if (showError) Color.Red else Color.Gray,
+                                                    color = if (showError) Color(0xFFE53E3E) else Color(0xFF718096),
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 13.sp
                                                 )
@@ -295,7 +304,7 @@ fun ExitPinScreen(
                                                     Text(
                                                         text = intentosText,
                                                         fontSize = 11.sp,
-                                                        color = Color(0xFF888888)
+                                                        color = Color(0xFFA0AEC0)
                                                     )
                                                 }
                                             }
@@ -317,7 +326,7 @@ fun ExitPinScreen(
                                     shape = RoundedCornerShape(18.dp),
                                     enabled = !isLoading && pin.length == 4,
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF63CFE8)
+                                        containerColor = Color(0xFF3182CE)
                                     )
                                 ) {
                                     Text("Autorizar", fontWeight = FontWeight.Bold)
@@ -336,7 +345,7 @@ fun ExitPinScreen(
                                     shape = RoundedCornerShape(18.dp),
                                     enabled = !isLoading,
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF2D2D2D)
+                                        containerColor = Color(0xFF4A5568)
                                     )
                                 ) {
                                     Text("Cancelar", fontWeight = FontWeight.Bold)
@@ -348,7 +357,7 @@ fun ExitPinScreen(
 
                 Text(
                     text = context.getString(R.string.dashboard_managed_by_it),
-                    color = Color.White,
+                    color = Color(0xFF718096),
                     fontSize = 12.sp,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)

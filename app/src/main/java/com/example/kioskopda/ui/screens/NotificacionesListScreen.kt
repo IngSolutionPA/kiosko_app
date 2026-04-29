@@ -37,7 +37,7 @@ fun NotificacionesListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF37BBD8))
+            .background(Color(0xFFEDF2F7))
             .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -49,14 +49,14 @@ fun NotificacionesListScreen(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .background(Color.White, RoundedCornerShape(18.dp))
+                    .background(Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Volver",
-                    tint = Color(0xFF474747)
+                    tint = Color(0xFF4A5568)
                 )
             }
             Row(
@@ -65,14 +65,14 @@ fun NotificacionesListScreen(
             ) {
                 Text(
                     text = if (totalCount > 0) "Mensajes" else "Mensajes",
-                    color = Color.White,
+                    color = Color(0xFF2D3748),
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
                 if (unread > 0) {
                     Box(
                         modifier = Modifier
-                            .background(Color(0xFFE53935), RoundedCornerShape(50)),
+                            .background(Color(0xFFE53E3E), RoundedCornerShape(50)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -91,26 +91,27 @@ fun NotificacionesListScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            color = Color(0xFFEFEFEF),
-            shape = RoundedCornerShape(18.dp)
+            color = Color(0xFFFFFFFF),
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = 2.dp
         ) {
             when (val state = uiState) {
                 is NotificacionesUiState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF37BBD8))
+                        CircularProgressIndicator(color = Color(0xFF3182CE))
                     }
                 }
                 is NotificacionesUiState.Error -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = state.message, color = Color.Red)
+                        Text(text = state.message, color = Color(0xFFE53E3E))
                     }
                 }
                 is NotificacionesUiState.Success -> {
                     if (state.items.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFC2C2C2))
-                                Text(text = "Sin mensajes", color = Color(0xFFB7B7B7))
+                                Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
+                                Text(text = "Sin mensajes", color = Color(0xFFA0AEC0))
                             }
                         }
                     } else {
@@ -139,8 +140,8 @@ fun NotificacionesListScreen(
 
 @Composable
 fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: () -> Unit) {
-    val bgColor = if (isRead) Color.White else Color(0xFFE8F7FC)
-    val titleWeight = if (isRead) FontWeight.Normal else FontWeight.Bold
+    val bgColor = if (isRead) Color(0xFFF7FAFC) else Color(0xFFEBF8FF)
+    val titleWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold
 
     Surface(
         modifier = Modifier
@@ -148,7 +149,7 @@ fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: (
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         color = bgColor,
-        shadowElevation = 2.dp
+        shadowElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -160,7 +161,7 @@ fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: (
                     modifier = Modifier
                         .size(40.dp)
                         .background(
-                            if (isRead) Color(0xFFBDBDBD) else Color(0xFF37BBD8),
+                            if (isRead) Color(0xFFCBD5E0) else Color(0xFF3182CE),
                             RoundedCornerShape(12.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -171,33 +172,50 @@ fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: (
                     Box(
                         modifier = Modifier
                             .size(10.dp)
-                            .background(Color(0xFFE53935), RoundedCornerShape(50))
+                            .background(Color(0xFFE53E3E), RoundedCornerShape(50))
                     )
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.titulo,
-                    fontWeight = titleWeight,
-                    fontSize = 14.sp,
-                    color = Color(0xFF333333),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.titulo,
+                        fontWeight = titleWeight,
+                        fontSize = 14.sp,
+                        color = Color(0xFF2D3748),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    PrioridadBadge(item.prioridad)
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = item.mensaje,
                     fontSize = 12.sp,
-                    color = Color(0xFF777777),
+                    color = Color(0xFF718096),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = listOfNotNull(item.fecha, formatBackendTime(item.hora)).joinToString("  ·  "),
+                        fontSize = 10.sp,
+                        color = Color(0xFFA0AEC0)
+                    )
+                }
             }
             if (!isRead) {
                 Box(
                     modifier = Modifier
                         .size(10.dp)
-                        .background(Color(0xFF37BBD8), RoundedCornerShape(50))
+                        .background(Color(0xFF3182CE), RoundedCornerShape(50))
                 )
             }
         }

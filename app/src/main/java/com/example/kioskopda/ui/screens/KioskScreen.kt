@@ -12,22 +12,17 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -42,12 +37,10 @@ import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.SignalCellular4Bar
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -74,9 +67,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kioskopda.DeviceIdentifier
 import com.example.kioskopda.DeviceIdentifierSource
 import com.example.kioskopda.network.NotificacionItem
-import com.example.kioskopda.ui.components.DividerLine
 import com.example.kioskopda.R
-import com.example.kioskopda.kiosk.KioskManager
 import com.example.kioskopda.ui.theme.KioskoPDATheme
 import com.example.kioskopda.ui.utils.KioskShortcutType
 import com.example.kioskopda.ui.utils.openKioskShortcut
@@ -91,12 +82,7 @@ import java.util.Locale
 fun KioskScreen(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
-    kioskManager: KioskManager,
-    onRequestAdmin: () -> Unit,
     onExitKiosk: () -> Unit,
-    onUninstall: () -> Unit,
-    onRefreshStatus: () -> Unit,
-    onEnableDeviceOwner: () -> Unit
 ) {
     // Navigation state
     var currentScreen by remember { mutableStateOf<KioskNavScreen>(KioskNavScreen.Main) }
@@ -105,12 +91,7 @@ fun KioskScreen(
         is KioskNavScreen.Main -> KioskMainContent(
             modifier = modifier,
             deviceIdentifier = deviceIdentifier,
-            kioskManager = kioskManager,
-            onRequestAdmin = onRequestAdmin,
             onExitKiosk = onExitKiosk,
-            onUninstall = onUninstall,
-            onRefreshStatus = onRefreshStatus,
-            onEnableDeviceOwner = onEnableDeviceOwner,
             onOpenNotifications = { currentScreen = KioskNavScreen.NotificationList },
             onOpenNotificationDetail = { item -> currentScreen = KioskNavScreen.NotificationDetail(item) }
         )
@@ -135,12 +116,7 @@ private sealed class KioskNavScreen {
 private fun KioskMainContent(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
-    kioskManager: KioskManager,
-    onRequestAdmin: () -> Unit,
     onExitKiosk: () -> Unit,
-    onUninstall: () -> Unit,
-    onRefreshStatus: () -> Unit,
-    onEnableDeviceOwner: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenNotificationDetail: (NotificacionItem) -> Unit
 ) {
@@ -149,7 +125,6 @@ private fun KioskMainContent(
     val exitPinViewModel: ExitPinViewModel = viewModel()
     val notificacionesViewModel: NotificacionesViewModel = viewModel()
     val notifState by notificacionesViewModel.uiState.collectAsState()
-    val totalCount by notificacionesViewModel.totalCount.collectAsState()
     val readIds by notificacionesViewModel.readIds.collectAsState()
 
     LaunchedEffect(Unit) { notificacionesViewModel.loadPreview() }
@@ -182,6 +157,14 @@ private fun KioskMainContent(
                 .replace("AM", "a.m")
                 .replace("PM", "p.m")
             delay(1000)
+        }
+    }
+
+    val currentDate by produceState(initialValue = "") {
+        val formatter = SimpleDateFormat("EEE, d MMM yyyy", Locale.forLanguageTag("es-PA"))
+        while (true) {
+            value = formatter.format(Date())
+            delay(60_000) // actualiza cada minuto (el día cambia rara vez)
         }
     }
 
@@ -298,276 +281,133 @@ private fun KioskMainContent(
 
     Column(
         modifier = modifier
-            .background(Color(0xFF37BBD8))
-            .padding(horizontal = 16.dp, vertical = 18.dp),
+            .background(Color(0xFFEDF2F7))
+            .padding(horizontal = 16.dp, vertical = 18.dp)
+            .padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // ── Card superior ─────────────────────────────────────────────────
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFFFFFFFF),
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = 2.dp
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(38.dp)
-                    .background(Color.White, RoundedCornerShape(18.dp))
-                    .clickable { showPinDialog = true },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = null,
-                    tint = Color(0xFF474747)
-                )
-            }
-
-            Surface(
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(13.dp),
-                color = Color.Black
-            ) {
+                // Hora (izq) — Fecha (der)
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "⌂",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Text(
-                        text = context.getString(R.string.dashboard_institution),
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(
-                modifier = Modifier.weight(1f),
-                text = context.getString(R.string.dashboard_apps),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                modifier = Modifier.width(94.dp),
-                text = context.getString(R.string.dashboard_network),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                color = Color(0xFFF0F0F0),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-
-                    // FILA 1
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AppTile(
-                            modifier = Modifier.weight(1f),
-                            color = Color(0xFFFFFFFF),
-                            packageName = "com.imaapp.proyectoappcedula",
-                            fallbackIcon = Icons.Filled.Apps,
-                            label = context.getString(R.string.dashboard_pda_label),
-                            onClick = { openKioskShortcut(context, KioskShortcutType.PDA) }
-                        )
-                        AppTile(
-                            modifier = Modifier.weight(1f),
-                            color = Color(0xFFFFFFFF),
-                            packageName = "com.hihonor.camera",
-                            fallbackIcon = Icons.Filled.PhotoCamera,
-                            label = "Cámara",
-                            onClick = { openKioskShortcut(context, KioskShortcutType.CAMERA) }
-                        )
-                    }
-
-                    // FILA 2
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AppTile(
-                            modifier = Modifier.weight(1f),
-                            color = Color(0xFFFFFFFF),
-                            packageName = "com.hihonor.photos",
-                            fallbackIcon = Icons.Filled.Photo,
-                            label = "Galería",
-                            onClick = { openKioskShortcut(context, KioskShortcutType.GALLERY) }
-                        )
-                        AppTile(
-                            modifier = Modifier.weight(1f),
-                            color = Color(0xFFFFFFFF),
-                            packageName = "com.hihonor.notepad",
-                            label = "Notas",
-                            fallbackIcon = Icons.AutoMirrored.Filled.Note,
-                            onClick = { openKioskShortcut(context, KioskShortcutType.NOTES) }
-                        )
-                    }
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .width(94.dp)
-                    .wrapContentHeight(),
-                color = Color(0xFFF0F0F0),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
                         text = currentTime,
-                        modifier = Modifier.fillMaxWidth(),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = Color(0xFF333333),
-                        textAlign = TextAlign.Center
+                        fontSize = 18.sp,
+                        color = Color(0xFF2D3748)
                     )
-                    DividerLine()
-                    // Batería
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = currentDate,
+                        fontSize = 12.sp,
+                        color = Color(0xFF718096),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Fila de iconos con botón PIN a la izquierda
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Botón PIN (izquierda)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0xFFE2E8F0), RoundedCornerShape(50))
+                            .clickable { showPinDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            imageVector = Icons.Filled.BatteryStd,
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                             contentDescription = null,
-                            tint = batteryColor,
-                            modifier = Modifier.size(20.dp)
+                            tint = Color(0xFF4A5568),
+                            modifier = Modifier.size(22.dp)
                         )
-                        Text(text = "$batteryLevel%", color = batteryColor, fontSize = 10.sp)
                     }
-                    DividerLine()
+
+                    // Batería
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
+                        Icon(Icons.Filled.BatteryStd, null, tint = batteryColor, modifier = Modifier.size(20.dp))
+                        Text("$batteryLevel%", fontSize = 9.sp, color = Color(0xFF718096), fontWeight = FontWeight.Medium)
+                    }
+
                     // WiFi
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
                         modifier = Modifier.clickable {
-                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                                 Intent(Settings.Panel.ACTION_WIFI)
-                            } else {
-                                Intent(Settings.ACTION_WIFI_SETTINGS)
-                            }
+                            else Intent(Settings.ACTION_WIFI_SETTINGS)
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            try {
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                context.startActivity(
-                                    Intent(Settings.ACTION_SETTINGS)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
+                            try { context.startActivity(intent) }
+                            catch (_: Exception) {
+                                context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                             }
                         }
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Wifi,
-                            contentDescription = "WiFi",
-                            tint = wifiColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = if (isWifiConnected) "WiFi" else "Sin WiFi",
-                            fontSize = 9.sp,
-                            color = wifiColor,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Icon(Icons.Filled.Wifi, "WiFi", tint = wifiColor, modifier = Modifier.size(20.dp))
+                        Text(if (isWifiConnected) "WiFi" else "Sin WiFi", fontSize = 9.sp, color = Color(0xFF718096), fontWeight = FontWeight.Medium)
                     }
-                    DividerLine()
+
                     // Señal celular
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Filled.SignalCellular4Bar,
-                            contentDescription = null,
-                            tint = cellularColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = if (isCellularConnected) "Red" else "Sin red",
-                            fontSize = 9.sp,
-                            color = cellularColor,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    DividerLine()
-                    // Brillo — abre ajustes de pantalla del sistema
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
+                        Icon(Icons.Filled.SignalCellular4Bar, null, tint = cellularColor, modifier = Modifier.size(20.dp))
+                        Text(if (isCellularConnected) "Red" else "Sin red", fontSize = 9.sp, color = Color(0xFF718096), fontWeight = FontWeight.Medium)
+                    }
+
+                    // Brillo
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
                         modifier = Modifier.clickable {
-                            try {
-                                context.startActivity(
-                                    Intent(Settings.ACTION_DISPLAY_SETTINGS)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
-                            } catch (_: Exception) {}
+                            try { context.startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                            catch (_: Exception) {}
                         }
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.BrightnessHigh,
-                            contentDescription = "Brillo",
-                            tint = Color(0xFFFFA000),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(text = "Brillo", fontSize = 9.sp, color = Color(0xFF777777))
+                        Icon(Icons.Filled.BrightnessHigh, "Brillo", tint = Color(0xFFED8936), modifier = Modifier.size(20.dp))
+                        Text("Brillo", fontSize = 9.sp, color = Color(0xFF718096))
                     }
-                    DividerLine()
+
                     // Linterna
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
                         modifier = Modifier.clickable { toggleTorch() }
                     ) {
                         Icon(
-                            imageVector = if (isTorchOn) Icons.Filled.FlashlightOn
-                                          else Icons.Filled.FlashlightOff,
+                            imageVector = if (isTorchOn) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
                             contentDescription = "Linterna",
-                            tint = if (isTorchOn) Color(0xFF673AB7) else Color(0xFFBDBDBD),
+                            tint = if (isTorchOn) Color(0xFF805AD5) else Color(0xFFCBD5E0),
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = if (isTorchOn) "ON" else "OFF",
                             fontSize = 9.sp,
-                            color = if (isTorchOn) Color(0xFF673AB7) else Color(0xFF999999),
+                            color = if (isTorchOn) Color(0xFF805AD5) else Color(0xFF718096),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -575,13 +415,63 @@ private fun KioskMainContent(
             }
         }
 
+        // ── Label Apps Permitidas ─────────────────────────────────────────
+        Text(
+            text = context.getString(R.string.dashboard_apps),
+            color = Color(0xFF4A5568),
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 13.sp
+        )
+
+        // ── Fila única de apps ────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AppTile(
+                modifier = Modifier.weight(1f),
+                color = Color(0xFFFFFFFF),
+                packageName = "com.imaapp.proyectoappcedula",
+                fallbackIcon = Icons.Filled.Apps,
+                label = context.getString(R.string.dashboard_pda_label),
+                onClick = { openKioskShortcut(context, KioskShortcutType.PDA) }
+            )
+            AppTile(
+                modifier = Modifier.weight(1f),
+                color = Color(0xFFFFFFFF),
+                packageName = "com.hihonor.camera",
+                fallbackIcon = Icons.Filled.PhotoCamera,
+                label = "Cámara",
+                onClick = { openKioskShortcut(context, KioskShortcutType.CAMERA) }
+            )
+            AppTile(
+                modifier = Modifier.weight(1f),
+                color = Color(0xFFFFFFFF),
+                packageName = "com.hihonor.photos",
+                fallbackIcon = Icons.Filled.Photo,
+                label = "Galería",
+                onClick = { openKioskShortcut(context, KioskShortcutType.GALLERY) }
+            )
+            AppTile(
+                modifier = Modifier.weight(1f),
+                color = Color(0xFFFFFFFF),
+                packageName = "com.hihonor.notepad",
+                label = "Notas",
+                fallbackIcon = Icons.AutoMirrored.Filled.Note,
+                onClick = { openKioskShortcut(context, KioskShortcutType.NOTES) }
+            )
+        }
+
         // ── Mensajes (preview 3) ──────────────────────────────────────────
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            color = Color(0xFFEFEFEF),
-            shape = RoundedCornerShape(18.dp)
+            color = Color(0xFFFFFFFF),
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = 2.dp
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header row con total y badge de no leídos
@@ -598,15 +488,15 @@ private fun KioskMainContent(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = if (totalCount > 0) "Mensajes" else "Mensajes",
+                            text = "Mensajes",
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
-                            color = Color(0xFF333333)
+                            color = Color(0xFF2D3748)
                         )
                         if (unread > 0) {
                             Box(
                                 modifier = Modifier
-                                    .background(Color(0xFFE53935), RoundedCornerShape(50)),
+                                    .background(Color(0xFFE53E3E), RoundedCornerShape(50)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -622,7 +512,7 @@ private fun KioskMainContent(
                     Text(
                         text = "Ver más →",
                         fontSize = 12.sp,
-                        color = Color(0xFF37BBD8),
+                        color = Color(0xFF3182CE),
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.clickable { onOpenNotifications() }
                     )
@@ -632,7 +522,7 @@ private fun KioskMainContent(
                     is NotificacionesUiState.Loading -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
-                                color = Color(0xFF37BBD8),
+                                color = Color(0xFF3182CE),
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -640,8 +530,8 @@ private fun KioskMainContent(
                     is NotificacionesUiState.Error -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFC2C2C2))
-                                Text(text = "Sin conexión", color = Color(0xFFB7B7B7), fontSize = 12.sp)
+                                Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
+                                Text(text = "Sin conexión", color = Color(0xFFA0AEC0), fontSize = 12.sp)
                             }
                         }
                     }
@@ -649,10 +539,10 @@ private fun KioskMainContent(
                         if (state.items.isEmpty()) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFC2C2C2))
+                                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
                                     Text(
                                         text = context.getString(R.string.dashboard_no_messages),
-                                        color = Color(0xFFB7B7B7),
+                                        color = Color(0xFFA0AEC0),
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -688,37 +578,17 @@ private fun KioskMainContent(
         ) {
             Text(
                 text = imeiText,
-                color = Color.Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                color = Color(0xFF4A5568),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = context.getString(R.string.dashboard_managed_by_it),
-                color = Color.White,
-                fontSize = 12.sp,
+                color = Color(0xFF718096),
+                fontSize = 11.sp,
                 textAlign = TextAlign.Center
             )
-        }
-
-        // Mantenemos controles de soporte solo cuando aun no esta en full-kiosk.
-        if (!kioskManager.canUseFullKiosk()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!kioskManager.isAdminActive()) {
-                    Button(onClick = onRequestAdmin, modifier = Modifier.fillMaxWidth()) {
-                        Text(text = context.getString(R.string.enable_admin))
-                    }
-                }
-                Button(onClick = onEnableDeviceOwner, modifier = Modifier.fillMaxWidth()) {
-                    Text(text = context.getString(R.string.enable_device_owner))
-                }
-                Button(onClick = onRefreshStatus, modifier = Modifier.fillMaxWidth()) {
-                    Text(text = context.getString(R.string.refresh_status))
-                }
-                TextButton(onClick = onUninstall, modifier = Modifier.fillMaxWidth()) {
-                    Text(text = context.getString(R.string.uninstall_device_owner), color = Color.White)
-                }
-            }
         }
     }
 
@@ -739,8 +609,8 @@ private fun KioskMainContent(
 
 @Composable
 private fun NotifPreviewRow(item: NotificacionItem, isRead: Boolean, onClick: () -> Unit) {
-    val bgColor = if (isRead) Color.White else Color(0xFFE8F7FC)
-    val titleWeight = if (isRead) FontWeight.Normal else FontWeight.Bold
+    val bgColor = if (isRead) Color(0xFFF7FAFC) else Color(0xFFEBF8FF)
+    val titleWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold
 
     Row(
         modifier = Modifier
@@ -756,7 +626,7 @@ private fun NotifPreviewRow(item: NotificacionItem, isRead: Boolean, onClick: ()
                 modifier = Modifier
                     .size(32.dp)
                     .background(
-                        if (isRead) Color(0xFFBDBDBD) else Color(0xFF37BBD8),
+                        if (isRead) Color(0xFFCBD5E0) else Color(0xFF3182CE),
                         RoundedCornerShape(8.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -777,14 +647,23 @@ private fun NotifPreviewRow(item: NotificacionItem, isRead: Boolean, onClick: ()
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.titulo,
-                fontWeight = titleWeight,
-                fontSize = 13.sp,
-                color = Color(0xFF222222),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.titulo,
+                    fontWeight = titleWeight,
+                    fontSize = 13.sp,
+                    color = Color(0xFF222222),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.size(4.dp))
+                PrioridadBadge(item.prioridad)
+            }
             Text(
                 text = item.mensaje,
                 fontSize = 11.sp,
@@ -792,12 +671,19 @@ private fun NotifPreviewRow(item: NotificacionItem, isRead: Boolean, onClick: ()
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
+                Text(
+                    text = listOfNotNull(item.fecha, formatBackendTime(item.hora)).joinToString("  ·  "),
+                    fontSize = 9.sp,
+                    color = Color(0xFFA0AEC0)
+                )
+            }
         }
         if (!isRead) {
             Box(
                 modifier = Modifier
                     .size(8.dp)
-                    .background(Color(0xFF37BBD8), RoundedCornerShape(50))
+                    .background(Color(0xFF3182CE), RoundedCornerShape(50))
             )
         }
     }
@@ -823,7 +709,8 @@ private fun AppTile(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(vertical = 8.dp)
         ) {
             if (appIcon != null) {
                 Box(
@@ -868,12 +755,7 @@ fun KioskPreview() {
                 value = "359881234567890",
                 source = DeviceIdentifierSource.IMEI
             ),
-            kioskManager = KioskManager(LocalContext.current),
-            onRequestAdmin = {},
-            onExitKiosk = {},
-            onUninstall = {},
-            onRefreshStatus = {},
-            onEnableDeviceOwner = {}
+            onExitKiosk = {}
         )
     }
 }

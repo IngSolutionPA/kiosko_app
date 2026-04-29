@@ -45,7 +45,7 @@ fun DeviceBlockedScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF35BDD9))
+            .background(Color(0xFFEDF2F7))
     ) {
 
         Box(
@@ -54,13 +54,13 @@ fun DeviceBlockedScreen(
                 .padding(horizontal = 24.dp)
                 .align(Alignment.Center)
         ) {
-            // CARD NARANJA (HEADER)
+            // CARD HEADER azul corporativo
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
                 shape = RoundedCornerShape(22.dp),
-                color = Color(0xFFF9963B)
+                color = Color(0xFF3182CE)
             ) {
                 Box(
                     contentAlignment = Alignment.TopCenter,
@@ -76,13 +76,14 @@ fun DeviceBlockedScreen(
                 }
             }
 
-            // CARD BLANCA (CUERPO)
+            // CARD CUERPO blanco con sombra sutil
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 50.dp),
                 shape = RoundedCornerShape(22.dp),
-                color = Color(0xFFF3F3F3)
+                color = Color(0xFFFFFFFF),
+                shadowElevation = 2.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -98,7 +99,7 @@ fun DeviceBlockedScreen(
                     Icon(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = null,
-                        tint = Color(0xFFF9963B),
+                        tint = Color(0xFF3182CE),
                         modifier = Modifier.size(72.dp)
                     )
 
@@ -107,9 +108,9 @@ fun DeviceBlockedScreen(
                     // MENSAJE PRINCIPAL
                     Text(
                         text = "contacte a informatica",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp,
-                        color = Color(0xFF222222),
+                        color = Color(0xFF2D3748),
                         textAlign = TextAlign.Center
                     )
 
@@ -118,19 +119,19 @@ fun DeviceBlockedScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color.White
+                            color = Color(0xFFF7FAFC)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .border(1.dp, Color(0xFFE2E2E2), RoundedCornerShape(12.dp))
+                                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
                                     .padding(vertical = 12.dp, horizontal = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "IMEI: $imei",
                                     fontSize = 13.sp,
-                                    color = Color(0xFF555555),
+                                    color = Color(0xFF718096),
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -154,8 +155,8 @@ fun DeviceBlockedScreen(
                             .height(56.dp),
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (wasNotified) Color(0xFF2D2D2D) else Color(0xFFF9963B),
-                            disabledContainerColor = if (wasNotified) Color(0xFF555555) else Color(0xFFDDAA77)
+                            containerColor = if (wasNotified) Color(0xFF4A5568) else Color(0xFF3182CE),
+                            disabledContainerColor = if (wasNotified) Color(0xFF718096) else Color(0xFF90CDF4)
                         )
                     ) {
                         if (isChecking || isNotifying) {
@@ -179,7 +180,7 @@ fun DeviceBlockedScreen(
         // TEXTO FIJO ABAJO
         Text(
             text = context.getString(R.string.dashboard_managed_by_it),
-            color = Color.White,
+            color = Color(0xFF718096),
             fontSize = 12.sp,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -187,4 +188,3 @@ fun DeviceBlockedScreen(
         )
     }
 }
-
