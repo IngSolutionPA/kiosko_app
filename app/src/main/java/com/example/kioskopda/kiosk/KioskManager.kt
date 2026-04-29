@@ -33,12 +33,23 @@ class KioskManager(private val context: Context) {
     fun applyKioskPolicies(allowedPackages: Set<String>) {
         if (!canUseFullKiosk()) return
 
-        val lockTaskPackages = (allowedPackages + context.packageName).toTypedArray()
+        // Incluimos el paquete de ajustes del sistema para permitir el panel WiFi
+        val systemSettingsPackages = setOf(
+            "com.android.settings",
+            "com.hihonor.android.settings",   // Honor/HarmonyOS settings
+            "com.android.systemui"
+        )
+        val lockTaskPackages = (allowedPackages + context.packageName + systemSettingsPackages)
+            .toTypedArray()
         dpm?.setLockTaskPackages(adminComponent, lockTaskPackages)
         grantPhoneStatePermission()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            dpm?.setLockTaskFeatures(adminComponent, DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
+            // Permitimos acciones globales (panel WiFi y similares) pero mantenemos el resto bloqueado
+            dpm?.setLockTaskFeatures(
+                adminComponent,
+                DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS
+            )
         }
 
         dpm?.setStatusBarDisabled(adminComponent, true)

@@ -28,6 +28,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.KioskoPDA">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,6 +47,7 @@
             android:exported="true"
             android:noHistory="true"
             android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.KioskoPDA">
             <intent-filter>
                 <action android:name="android.app.action.GET_PROVISIONING_MODE" />

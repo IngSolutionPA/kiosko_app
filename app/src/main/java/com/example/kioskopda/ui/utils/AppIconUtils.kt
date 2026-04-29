@@ -25,4 +25,3 @@ fun rememberAppIcon(packageName: String): ImageBitmap? {
         }
     }
 }
-

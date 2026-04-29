@@ -1,26 +1,43 @@
 package com.example.kioskopda.ui.screens
 
 import android.content.Intent
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.os.Handler
+import android.os.Looper
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BatteryStd
+import androidx.compose.material.icons.filled.BrightnessHigh
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.SignalCellular4Bar
@@ -32,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -187,7 +205,95 @@ private fun KioskMainContent(
         batteryLevel >= 60 -> Color(0xFF4CAF50) // verde
         batteryLevel >= 30 -> Color(0xFFFFA000) // naranja
         else -> Color(0xFFE53935) // rojo
-    } //No es obligatorio, se quita si no les gusta.
+    }
+
+    // ── Estado WiFi en tiempo real ──────────────────────────────────────
+    val isWifiConnected by produceState(initialValue = false) {
+        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                as ConnectivityManager
+
+        // Valor inicial
+        value = cm.getNetworkCapabilities(cm.activeNetwork)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+
+        // Escucha cambios
+        val request = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .build()
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { value = true }
+            override fun onLost(network: Network) { value = false }
+        }
+
+        cm.registerNetworkCallback(request, callback)
+        awaitDispose { cm.unregisterNetworkCallback(callback) }
+    }
+
+    val wifiColor = if (isWifiConnected) Color(0xFF4CAF50) else Color(0xFFBDBDBD)
+
+    // ── Estado señal celular en tiempo real ─────────────────────────────
+    val isCellularConnected by produceState(initialValue = false) {
+        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                as ConnectivityManager
+        value = cm.getNetworkCapabilities(cm.activeNetwork)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+        val request = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+            .build()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { value = true }
+            override fun onLost(network: Network) { value = false }
+        }
+        cm.registerNetworkCallback(request, callback)
+        awaitDispose { cm.unregisterNetworkCallback(callback) }
+    }
+    val cellularColor = if (isCellularConnected) Color(0xFF4CAF50) else Color(0xFFBDBDBD)
+
+    // ── Linterna ──────────────────────────────────────────────────────────
+    var isTorchOn by remember { mutableStateOf(false) }
+
+    fun toggleTorch() {
+        try {
+            val cm = context.getSystemService(android.content.Context.CAMERA_SERVICE)
+                    as CameraManager
+            // Buscamos cualquier cámara con flash disponible (sin filtrar por trasera
+            // porque en algunos Honor la característica puede no reportarse como BACK)
+            val cameraId = cm.cameraIdList.firstOrNull { id ->
+                cm.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            }
+            if (cameraId != null) {
+                val next = !isTorchOn
+                cm.setTorchMode(cameraId, next)
+                isTorchOn = next   // actualiza el ícono inmediatamente
+            }
+        } catch (_: Exception) { }
+    }
+
+    // Sincroniza el ícono si alguien apaga/enciende la linterna desde afuera
+    DisposableEffect(Unit) {
+        val cm = runCatching {
+            context.getSystemService(android.content.Context.CAMERA_SERVICE) as CameraManager
+        }.getOrNull()
+        val cameraId = runCatching {
+            cm?.cameraIdList?.firstOrNull { id ->
+                cm.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            }
+        }.getOrNull()
+
+        val callback = object : CameraManager.TorchCallback() {
+            override fun onTorchModeChanged(cid: String, enabled: Boolean) {
+                if (cid == cameraId) isTorchOn = enabled
+            }
+            override fun onTorchModeUnavailable(cid: String) {
+                if (cid == cameraId) isTorchOn = false
+            }
+        }
+        cm?.registerTorchCallback(callback, Handler(Looper.getMainLooper()))
+        onDispose { cm?.unregisterTorchCallback(callback) }
+    }
 
 
     Column(
@@ -269,13 +375,15 @@ private fun KioskMainContent(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .height(180.dp),
+                    .fillMaxHeight(),
                 color = Color(0xFFF0F0F0),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -295,7 +403,7 @@ private fun KioskMainContent(
                     ) {
                         AppTile(
                             modifier = Modifier.weight(1f),
-                            color = Color(0xFFF59A38),
+                            color = Color(0xFFFFFFFF),
                             packageName = "com.imaapp.proyectoappcedula",
                             fallbackIcon = Icons.Filled.Apps,
                             label = context.getString(R.string.dashboard_pda_label),
@@ -303,9 +411,10 @@ private fun KioskMainContent(
                         )
                         AppTile(
                             modifier = Modifier.weight(1f),
-                            color = Color(0xFF4BB8E3),
+                            color = Color(0xFFFFFFFF),
                             packageName = "com.hihonor.camera",
                             fallbackIcon = Icons.Filled.PhotoCamera,
+                            label = "Cámara",
                             onClick = { openKioskShortcut(context, KioskShortcutType.CAMERA) }
                         )
                     }
@@ -319,15 +428,17 @@ private fun KioskMainContent(
                     ) {
                         AppTile(
                             modifier = Modifier.weight(1f),
-                            color = Color(0xFF4BB8E3),
+                            color = Color(0xFFFFFFFF),
                             packageName = "com.hihonor.photos",
                             fallbackIcon = Icons.Filled.Photo,
+                            label = "Galería",
                             onClick = { openKioskShortcut(context, KioskShortcutType.GALLERY) }
                         )
                         AppTile(
                             modifier = Modifier.weight(1f),
-                            color = Color(0xFF4BB8E3),
+                            color = Color(0xFFFFFFFF),
                             packageName = "com.hihonor.notepad",
+                            label = "Notas",
                             fallbackIcon = Icons.AutoMirrored.Filled.Note,
                             onClick = { openKioskShortcut(context, KioskShortcutType.NOTES) }
                         )
@@ -338,16 +449,17 @@ private fun KioskMainContent(
             Surface(
                 modifier = Modifier
                     .width(94.dp)
-                    .height(180.dp),
+                    .wrapContentHeight(),
                 color = Color(0xFFF0F0F0),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
                         text = currentTime,
@@ -358,22 +470,107 @@ private fun KioskMainContent(
                         textAlign = TextAlign.Center
                     )
                     DividerLine()
+                    // Batería
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Filled.BatteryStd,
                             contentDescription = null,
-                            tint = batteryColor
+                            tint = batteryColor,
+                            modifier = Modifier.size(20.dp)
                         )
-
+                        Text(text = "$batteryLevel%", color = batteryColor, fontSize = 10.sp)
+                    }
+                    DividerLine()
+                    // WiFi
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                Intent(Settings.Panel.ACTION_WIFI)
+                            } else {
+                                Intent(Settings.ACTION_WIFI_SETTINGS)
+                            }
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Wifi,
+                            contentDescription = "WiFi",
+                            tint = wifiColor,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Text(
-                            text = "$batteryLevel%",
-                            color = batteryColor
+                            text = if (isWifiConnected) "WiFi" else "Sin WiFi",
+                            fontSize = 9.sp,
+                            color = wifiColor,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                     DividerLine()
-                    Icon(Icons.Filled.Wifi, contentDescription = null, tint = Color(0xFF202020))
+                    // Señal celular
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Filled.SignalCellular4Bar,
+                            contentDescription = null,
+                            tint = cellularColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = if (isCellularConnected) "Red" else "Sin red",
+                            fontSize = 9.sp,
+                            color = cellularColor,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                     DividerLine()
-                    Icon(Icons.Filled.SignalCellular4Bar, contentDescription = null, tint = Color(0xFF202020))
+                    // Brillo — abre ajustes de pantalla del sistema
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable {
+                            try {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_DISPLAY_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            } catch (_: Exception) {}
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.BrightnessHigh,
+                            contentDescription = "Brillo",
+                            tint = Color(0xFFFFA000),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(text = "Brillo", fontSize = 9.sp, color = Color(0xFF777777))
+                    }
+                    DividerLine()
+                    // Linterna
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { toggleTorch() }
+                    ) {
+                        Icon(
+                            imageVector = if (isTorchOn) Icons.Filled.FlashlightOn
+                                          else Icons.Filled.FlashlightOff,
+                            contentDescription = "Linterna",
+                            tint = if (isTorchOn) Color(0xFF673AB7) else Color(0xFFBDBDBD),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = if (isTorchOn) "ON" else "OFF",
+                            fontSize = 9.sp,
+                            color = if (isTorchOn) Color(0xFF673AB7) else Color(0xFF999999),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -624,32 +821,38 @@ private fun AppTile(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        if (appIcon != null) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .paint(
-                        painter = BitmapPainter(appIcon),
-                        contentScale = ContentScale.Fit
-                    )
-            )
-        } else {
-            // Ícono de respaldo si la app no está instalada
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (appIcon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .paint(
+                            painter = BitmapPainter(appIcon),
+                            contentScale = ContentScale.Fit
+                        )
+                )
+            } else {
                 Icon(
                     imageVector = fallbackIcon,
                     contentDescription = label,
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
-                if (label != null) {
-                    Text(
-                        text = label,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
+            }
+
+            // 👇 SIEMPRE muestra el nombre
+            if (label != null) {
+                Text(
+                    text = label,
+                    color = Color.Black, // 👈 aquí cambias color del texto
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
             }
         }
     }
