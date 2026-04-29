@@ -64,6 +64,18 @@ fun ExitPinScreen(
 
     val isLoading = uiState is PinUiState.Loading
     val showError = uiState is PinUiState.Error || uiState is PinUiState.NetworkError
+    val isBlocked = uiState is PinUiState.Blocked
+    val isCheckingUnblock = uiState is PinUiState.CheckingUnblock
+
+    // Pantalla de dispositivo bloqueado
+    if (isBlocked || isCheckingUnblock) {
+        DeviceBlockedScreen(
+            imei = imei,
+            isChecking = isCheckingUnblock,
+            onCheckUnblock = { viewModel.checkUnblock(imei) }
+        )
+        return
+    }
 
     val errorMensaje = when (val s = uiState) {
         is PinUiState.Error -> s.mensaje
