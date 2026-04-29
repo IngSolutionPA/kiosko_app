@@ -8,7 +8,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
@@ -23,6 +25,12 @@ interface KioscoApiService {
         @Field("pin") pin: String,
         @Field("imei") imei: String
     ): Response<LoginResponse>
+
+    @GET("kiosco/notificacion_kiosco/")
+    suspend fun getNotificaciones(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 10
+    ): Response<NotificacionesResponse>
 }
 
 object RetrofitClient {
