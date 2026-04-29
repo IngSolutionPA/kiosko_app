@@ -12,6 +12,7 @@ data class NotificacionItem(
 data class NotificacionPagination(
     val page: Int,
     val limit: Int,
+    val estado: Int,
     @SerializedName("total_pages") val totalPages: Int
 )
 

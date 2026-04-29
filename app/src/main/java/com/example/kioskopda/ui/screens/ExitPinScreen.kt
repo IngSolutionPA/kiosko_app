@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kioskopda.R
+import com.example.kioskopda.ui.components.KioskAlertDialog
 
 @Composable
 fun ExitPinScreen(
@@ -49,18 +50,31 @@ fun ExitPinScreen(
     viewModel: ExitPinViewModel
 ) {
     val context = LocalContext.current
+
     var pin by remember { mutableStateOf("") }
+    var alertTitle by remember { mutableStateOf<String?>(null) }
+    var alertMessage by remember { mutableStateOf<String?>(null) }
+    var alertSuccess by remember { mutableStateOf(false) }
+
     var isNotifying by remember { mutableStateOf(false) }
     var wasNotified by remember { mutableStateOf(false) }
-    val uiState by viewModel.uiState.collectAsState()
 
+    val uiState by viewModel.uiState.collectAsState()
     val focusRequester = remember { FocusRequester() }
 
-    // Cuando el API responde Success, invocar onPinOk
     LaunchedEffect(uiState) {
-        if (uiState is PinUiState.Success) {
-            viewModel.resetState()
-            onPinOk()
+        when (uiState) {
+            is PinUiState.Success -> {
+                viewModel.resetState()
+                onPinOk()
+            }
+
+            is PinUiState.Unlocked -> {
+                viewModel.resetState()
+                onCancel()
+            }
+
+            else -> {}
         }
     }
 
@@ -69,261 +83,291 @@ fun ExitPinScreen(
     val isBlocked = uiState is PinUiState.Blocked
     val isCheckingUnblock = uiState is PinUiState.CheckingUnblock
 
-    // Pantalla de dispositivo bloqueado
-    if (isBlocked || isCheckingUnblock) {
-        DeviceBlockedScreen(
-            imei = imei,
-            isChecking = isCheckingUnblock,
-            isNotifying = isNotifying,
-            wasNotified = wasNotified,
-            onNotify = {
-                isNotifying = true
-
-                viewModel.notifyBlockedDevice(imei) { ok ->
-                    wasNotified = ok
-                    isNotifying = false
-                }
-            },
-            onCheckUnblock = {
-                viewModel.checkUnblock(imei)
-            }
-        )
-        return
-    }
-
-    val errorMensaje = when (val s = uiState) {
-        is PinUiState.Error -> s.mensaje
-        is PinUiState.NetworkError -> s.mensaje
-        else -> ""
-    }
-    val intentosText = when (val s = uiState) {
-        is PinUiState.Error -> if (s.intentosRestantes >= 0) "Quedan ${s.intentosRestantes} intentos" else ""
-        else -> ""
-    }
-
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF35BDD9))
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "¿Quieres salir del modo kiosko?",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+        if (isBlocked || isCheckingUnblock) {
+            DeviceBlockedScreen(
+                imei = imei,
+                isChecking = isCheckingUnblock,
+                isNotifying = isNotifying,
+                wasNotified = wasNotified,
+                onNotify = {
+                    isNotifying = true
+
+                    viewModel.notifyBlockedDevice(imei) { ok, title, message ->
+                        wasNotified = ok
+                        isNotifying = false
+
+                        alertSuccess = ok
+                        alertTitle = title ?: if (ok) "Éxito" else "Aviso"
+                        alertMessage = message ?: if (ok) {
+                            "Se ha notificado correctamente"
+                        } else {
+                            "No se pudo enviar la solicitud"
+                        }
+                    }
+                },
+                onCheckUnblock = {
+                    viewModel.checkUnblock(imei) { title, message ->
+                        if (message != null) {
+                            alertSuccess = false
+                            alertTitle = title ?: "Aviso"
+                            alertMessage = message
+                        }
+                    }
+                }
             )
+        } else {
+            val errorMensaje = when (val s = uiState) {
+                is PinUiState.Error -> s.mensaje
+                is PinUiState.NetworkError -> s.mensaje
+                else -> ""
+            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-            ) {
-                // CARD NARANJA (HEADER)
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFFF9963B)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.TopCenter,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text(
-                            text = "Ingrese PIN de autorizacion",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(top = 18.dp)
-                        )
+            val intentosText = when (val s = uiState) {
+                is PinUiState.Error -> {
+                    if (s.intentosRestantes >= 0) {
+                        "Quedan ${s.intentosRestantes} intentos"
+                    } else {
+                        ""
                     }
                 }
 
-                // CARD BLANCA (CUERPO)
-                Surface(
+                else -> ""
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF35BDD9))
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 50.dp),
-                    shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFFF3F3F3)
+                        .align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
+                    Text(
+                        text = "¿Quieres salir del modo kiosko?",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(horizontal = 24.dp)
                     ) {
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // INPUT INVISIBLE (OTP real)
-                        BasicTextField(
-                            value = pin,
-                            onValueChange = {
-                                if (it.length <= 4 && it.all { c -> c.isDigit() }) {
-                                    pin = it
-                                    if (showError) viewModel.resetState()
-                                }
-                            },
-                            modifier = Modifier
-                                .size(1.dp)
-                                .alpha(0f)
-                                .focusRequester(focusRequester),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.NumberPassword
-                            ),
-                            singleLine = true,
-                            enabled = !isLoading
-                        )
-
-                        // CAJITAS OTP
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.clickable {
-                                if (!isLoading) focusRequester.requestFocus()
-                            }
-                        ) {
-                            repeat(4) { index ->
-                                val char = pin.getOrNull(index)?.toString() ?: ""
-                                val isActive = index == pin.length && pin.length < 4
-                                val isFilled = index < pin.length
-
-                                val borderColor = when {
-                                    showError -> Color(0xFFFF5A5A)
-                                    isActive -> Color(0xFFF9963B)
-                                    isFilled -> Color(0xFFF9963B)
-                                    else -> Color(0xFFD9D9D9)
-                                }
-                                val backgroundColor = when {
-                                    showError && isFilled -> Color(0xFFFFF1F1)
-                                    isActive -> Color(0xFFFFF0E3)
-                                    else -> Color.White
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(50.dp)
-                                        .background(backgroundColor, RoundedCornerShape(14.dp))
-                                        .border(2.dp, borderColor, RoundedCornerShape(14.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = char,
-                                        color = Color(0xFF666666),
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // CAJA DE ERROR / ESTADO
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(70.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            color = Color.White
+                                .height(120.dp),
+                            shape = RoundedCornerShape(22.dp),
+                            color = Color(0xFFF9963B)
                         ) {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .border(
-                                        1.dp,
-                                        if (showError) Color(0xFFF9963B) else Color(0xFFE2E2E2),
-                                        RoundedCornerShape(18.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.TopCenter,
+                                modifier = Modifier.fillMaxSize()
                             ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        color = Color(0xFFF9963B),
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                } else {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = if (showError) errorMensaje else "Ingrese el PIN",
-                                            color = if (showError) Color.Red else Color.Gray,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
-                                        )
-                                        if (intentosText.isNotEmpty()) {
+                                Text(
+                                    text = "Ingrese PIN de autorizacion",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    modifier = Modifier.padding(top = 18.dp)
+                                )
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 50.dp),
+                            shape = RoundedCornerShape(22.dp),
+                            color = Color(0xFFF3F3F3)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                BasicTextField(
+                                    value = pin,
+                                    onValueChange = {
+                                        if (it.length <= 4 && it.all { c -> c.isDigit() }) {
+                                            pin = it
+                                            if (showError) viewModel.resetState()
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(1.dp)
+                                        .alpha(0f)
+                                        .focusRequester(focusRequester),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.NumberPassword
+                                    ),
+                                    singleLine = true,
+                                    enabled = !isLoading
+                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.clickable {
+                                        if (!isLoading) focusRequester.requestFocus()
+                                    }
+                                ) {
+                                    repeat(4) { index ->
+                                        val char = pin.getOrNull(index)?.toString() ?: ""
+                                        val isActive = index == pin.length && pin.length < 4
+                                        val isFilled = index < pin.length
+
+                                        val borderColor = when {
+                                            showError -> Color(0xFFFF5A5A)
+                                            isActive -> Color(0xFFF9963B)
+                                            isFilled -> Color(0xFFF9963B)
+                                            else -> Color(0xFFD9D9D9)
+                                        }
+
+                                        val backgroundColor = when {
+                                            showError && isFilled -> Color(0xFFFFF1F1)
+                                            isActive -> Color(0xFFFFF0E3)
+                                            else -> Color.White
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .size(50.dp)
+                                                .background(backgroundColor, RoundedCornerShape(14.dp))
+                                                .border(2.dp, borderColor, RoundedCornerShape(14.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
                                             Text(
-                                                text = intentosText,
-                                                fontSize = 11.sp,
-                                                color = Color(0xFF888888)
+                                                text = char,
+                                                color = Color(0xFF666666),
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     }
                                 }
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                                Spacer(modifier = Modifier.height(24.dp))
 
-                        // BOTÓN AUTORIZAR
-                        Button(
-                            onClick = {
-                                if (!isLoading && pin.length == 4) {
-                                    viewModel.validatePin(pin, imei)
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(70.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = Color.White
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .border(
+                                                1.dp,
+                                                if (showError) Color(0xFFF9963B) else Color(0xFFE2E2E2),
+                                                RoundedCornerShape(18.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isLoading) {
+                                            CircularProgressIndicator(
+                                                color = Color(0xFFF9963B),
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        } else {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Text(
+                                                    text = if (showError) errorMensaje else "Ingrese el PIN",
+                                                    color = if (showError) Color.Red else Color.Gray,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp
+                                                )
+
+                                                if (intentosText.isNotEmpty()) {
+                                                    Text(
+                                                        text = intentosText,
+                                                        fontSize = 11.sp,
+                                                        color = Color(0xFF888888)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            enabled = !isLoading && pin.length == 4,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF63CFE8)
-                            )
-                        ) {
-                            Text("Autorizar", fontWeight = FontWeight.Bold)
-                        }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(24.dp))
 
-                        // BOTÓN CANCELAR
-                        Button(
-                            onClick = {
-                                viewModel.resetState()
-                                onCancel()
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            enabled = !isLoading,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2D2D2D)
-                            )
-                        ) {
-                            Text("Cancelar", fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = {
+                                        if (!isLoading && pin.length == 4) {
+                                            viewModel.validatePin(pin, imei)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(60.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    enabled = !isLoading && pin.length == 4,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF63CFE8)
+                                    )
+                                ) {
+                                    Text("Autorizar", fontWeight = FontWeight.Bold)
+                                }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                Button(
+                                    onClick = {
+                                        viewModel.resetState()
+                                        onCancel()
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(60.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2D2D2D)
+                                    )
+                                ) {
+                                    Text("Cancelar", fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
+
+                Text(
+                    text = context.getString(R.string.dashboard_managed_by_it),
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 20.dp)
+                )
             }
         }
 
-        // TEXTO FIJO ABAJO
-        Text(
-            text = context.getString(R.string.dashboard_managed_by_it),
-            color = Color.White,
-            fontSize = 12.sp,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 20.dp)
-        )
+        if (alertMessage != null) {
+            KioskAlertDialog(
+                title = alertTitle ?: "Aviso",
+                message = alertMessage ?: "",
+                isSuccess = alertSuccess,
+                onDismiss = {
+                    alertTitle = null
+                    alertMessage = null
+                    alertSuccess = false
+                }
+            )
+        }
     }
 }

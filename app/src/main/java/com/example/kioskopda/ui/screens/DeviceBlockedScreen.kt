@@ -154,8 +154,8 @@ fun DeviceBlockedScreen(
                             .height(56.dp),
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF9963B),
-                            disabledContainerColor = Color(0xFFDDAA77)
+                            containerColor = if (wasNotified) Color(0xFF2D2D2D) else Color(0xFFF9963B),
+                            disabledContainerColor = if (wasNotified) Color(0xFF555555) else Color(0xFFDDAA77)
                         )
                     ) {
                         if (isChecking || isNotifying) {

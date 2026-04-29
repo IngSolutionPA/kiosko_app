@@ -32,9 +32,9 @@ interface KioscoApiService {
     ): Response<ValidacionResponse>
 
     @POST("kiosco/notificacion/")
-    suspend fun postNotificacion(
-        @Body request: NotificacionRequest
-    ): Response<NotificacionResponse>
+    suspend fun postCorreo(
+        @Body request: CorreoRequest
+    ): Response<CorreoResponse>
 
     @GET("kiosco/notificacion_kiosco/")
     suspend fun getNotificaciones(

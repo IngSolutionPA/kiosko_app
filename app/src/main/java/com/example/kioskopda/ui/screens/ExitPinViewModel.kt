@@ -8,7 +8,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.example.kioskopda.network.NotificacionRequest
+import com.example.kioskopda.network.CorreoRequest
 import com.example.kioskopda.network.ValidacionRequest
 
 sealed class PinUiState {
@@ -16,6 +16,8 @@ sealed class PinUiState {
     object Loading : PinUiState()
     object CheckingUnblock : PinUiState()
     object Success : PinUiState()
+
+    object Unlocked : PinUiState()
     data class Error(val mensaje: String, val intentosRestantes: Int) : PinUiState()
     data class NetworkError(val mensaje: String) : PinUiState()
     /** Dispositivo bloqueado por demasiados intentos fallidos */
@@ -82,76 +84,69 @@ class ExitPinViewModel : ViewModel() {
 
     fun notifyBlockedDevice(
         imei: String,
-        onFinished: (Boolean) -> Unit
+        onFinished: (Boolean, String?, String?) -> Unit
     ) {
         viewModelScope.launch {
             try {
                 Log.d("KioskoPIN", "📨 Enviando notificación para IMEI: $imei")
 
-                val response = RetrofitClient.api.postNotificacion(
-                    NotificacionRequest(imei = imei)
+                val response = RetrofitClient.api.postCorreo(
+                    CorreoRequest(imei = imei)
                 )
 
                 val body = response.body()
 
-                Log.d("KioskoPIN", "📨 HTTP Status: ${response.code()} ${response.message()}")
-                Log.d("KioskoPIN", "📨 Body notificación: ${Gson().toJson(body)}")
-
                 if (response.isSuccessful && body != null && body.ok) {
-                    Log.d("KioskoPIN", "✅ Notificación enviada: ${body.mensaje}")
-                    onFinished(true)
+                    onFinished(true, body.titulo, body.mensaje)
                 } else {
-                    Log.e("KioskoPIN", "❌ No se pudo enviar notificación")
-                    onFinished(false)
+                    onFinished(false, "Error", "No se pudo enviar la solicitud")
                 }
 
             } catch (e: Exception) {
-                Log.e("KioskoPIN", "🔴 Error notificando: ${e.localizedMessage}")
-                onFinished(false)
+                onFinished(
+                    false,
+                    "Sin conexión",
+                    e.localizedMessage ?: "No se pudo conectar con el servidor"
+                )
             }
         }
     }
 
     /** Consulta al backend si el dispositivo fue desbloqueado por el administrador */
-    fun checkUnblock(imei: String) {
+    fun checkUnblock(
+        imei: String,
+        onResult: (String?, String?) -> Unit
+    ) {
         _uiState.value = PinUiState.CheckingUnblock
 
         viewModelScope.launch {
             try {
-                Log.d("KioskoPIN", "🔄 Verificando desbloqueo para IMEI: $imei")
-
                 val response = RetrofitClient.api.postValidacion(
                     ValidacionRequest(imei = imei)
                 )
 
                 val body = response.body()
 
-                Log.d("KioskoPIN", "🔄 HTTP Status: ${response.code()} ${response.message()}")
-                Log.d("KioskoPIN", "🔄 Body validación: ${Gson().toJson(body)}")
-
-                if (body == null) {
-                    _uiState.value = PinUiState.Blocked("Sin respuesta del servidor")
+                if (body == null || !body.ok) {
+                    onResult("Error", "Error validando dispositivo")
+                    _uiState.value = PinUiState.Blocked("Error")
                     return@launch
                 }
-
-                if (!response.isSuccessful || !body.ok) {
-                    _uiState.value = PinUiState.Blocked(body.message)
-                    return@launch
-                }
-
-                Log.d("KioskoPIN", "🔎 ok=${body.ok}, blocked=${body.blocked}, message=${body.message}")
 
                 if (body.blocked) {
-                    Log.d("KioskoPIN", "🔓 Dispositivo habilitado, vuelve al PIN")
-                    _uiState.value = PinUiState.Idle
+                    onResult(null, null)
+                    _uiState.value = PinUiState.Unlocked
                 } else {
-                    Log.d("KioskoPIN", "🔒 Dispositivo sigue bloqueado")
+                    onResult(body.title, body.message)
                     _uiState.value = PinUiState.Blocked(body.message)
                 }
 
             } catch (e: Exception) {
-                Log.e("KioskoPIN", "🔴 Error verificando desbloqueo: ${e.localizedMessage}")
-                _uiState.value = PinUiState.Blocked("Sin conexión: ${e.localizedMessage}")
+                onResult(
+                    "Sin conexión",
+                    e.localizedMessage ?: "No se pudo conectar con el servidor"
+                )
+                _uiState.value = PinUiState.Blocked("Error")
             }
         }
     }
