@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(innerPadding),
                         deviceIdentifier = deviceIdentifier,
+                        kioskManager = kioskManager,
                         onExitKiosk = {
                             kioskManager.stopLockTask(this)
                             Toast.makeText(this, getString(R.string.kiosk_exit_success), Toast.LENGTH_SHORT).show()

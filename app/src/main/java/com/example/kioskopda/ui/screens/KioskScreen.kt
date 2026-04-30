@@ -88,6 +88,7 @@ import java.util.Locale
 fun KioskScreen(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
+    kioskManager: com.example.kioskopda.kiosk.KioskManager,
     onExitKiosk: () -> Unit,
 ) {
     // Navigation state
@@ -97,6 +98,7 @@ fun KioskScreen(
         is KioskNavScreen.Main -> KioskMainContent(
             modifier = modifier,
             deviceIdentifier = deviceIdentifier,
+            kioskManager = kioskManager,
             onExitKiosk = onExitKiosk,
             onOpenNotifications = { currentScreen = KioskNavScreen.NotificationList },
             onOpenNotificationDetail = { item -> currentScreen = KioskNavScreen.NotificationDetail(item) }
@@ -123,6 +125,7 @@ private sealed class KioskNavScreen {
 private fun KioskMainContent(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
+    kioskManager: com.example.kioskopda.kiosk.KioskManager,
     onExitKiosk: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenNotificationDetail: (NotificacionItem) -> Unit
@@ -334,20 +337,26 @@ private fun KioskMainContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón PIN (izquierda)
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(0xFFE2E8F0), RoundedCornerShape(50))
-                            .clickable { showPinDialog = true },
-                        contentAlignment = Alignment.Center
+                    // Columna izquierda con botón Apagar y PIN
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = null,
-                            tint = Color(0xFF4A5568),
-                            modifier = Modifier.size(22.dp)
-                        )
+                        // Botón PIN
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color(0xFFE2E8F0), RoundedCornerShape(50))
+                                .clickable { showPinDialog = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = null,
+                                tint = Color(0xFF4A5568),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
                     // Batería
@@ -764,6 +773,7 @@ private fun AppTile(
 @Preview(showBackground = true)
 @Composable
 fun KioskPreview() {
+    val context = LocalContext.current
     KioskoPDATheme {
         KioskScreen(
             deviceIdentifier = DeviceIdentifier(
@@ -771,6 +781,7 @@ fun KioskPreview() {
                 value = "359881234567890",
                 source = DeviceIdentifierSource.IMEI
             ),
+            kioskManager = com.example.kioskopda.kiosk.KioskManager(context),
             onExitKiosk = {}
         )
     }

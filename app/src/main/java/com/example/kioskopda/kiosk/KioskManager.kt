@@ -117,5 +117,87 @@ class KioskManager(private val context: Context) {
             it.isAdminActive(adminComponent)
         }
     }
-}
 
+    /**
+     * Reinicia el dispositivo (confirmado funcional con Device Owner).
+     */
+    fun rebootDevice(activity: Activity) {
+        runCatching { activity.stopLockTask() }
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            runCatching { dpm?.reboot(adminComponent) }
+        }, 300L)
+    }
+
+    /**
+     * Bloquea la pantalla inmediatamente (equivale a apagar la pantalla y asegurar el dispositivo).
+     */
+    fun lockScreen() {
+        runCatching { dpm?.lockNow() }
+    }
+    /**
+     * Intenta apagar el dispositivo. En la práctica, en Android no hay API
+     * oficial para esto sin permisos de sistema. Se recomienda usar el
+     * botón físico de encendido para apagar completamente.
+     */
+    fun powerOffDevice(activity: Activity): Boolean {
+        // Paso 1: quitar TODAS las restricciones para que el sistema pueda responder
+        runCatching {
+            dpm?.setStatusBarDisabled(adminComponent, false)
+            dpm?.setKeyguardDisabled(adminComponent, false)
+        }
+
+        // Paso 2: salir de Lock Task Mode
+        runCatching { activity.stopLockTask() }
+
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+
+            // Intento 1: IPowerManager.shutdown() vía binder (misma ruta interna que dpm.reboot())
+            var done = false
+            runCatching {
+                val smClass = Class.forName("android.os.ServiceManager")
+                val binder = smClass.getMethod("getService", String::class.java)
+                    .invoke(null, "power") as? android.os.IBinder
+                if (binder != null) {
+                    val data  = android.os.Parcel.obtain()
+                    val reply = android.os.Parcel.obtain()
+                    data.writeInterfaceToken("android.os.IPowerManager")
+                    data.writeInt(0)     // confirm = false
+                    data.writeString(null) // reason = null → shutdown
+                    data.writeInt(0)     // wait = false
+                    // El código de transacción 13 corresponde a shutdown() en IPowerManager AIDL
+                    binder.transact(13, data, reply, 0)
+                    data.recycle()
+                    reply.recycle()
+                    done = true
+                }
+            }
+
+            // Intento 2: intent interno del sistema (funciona sin lock task)
+            if (!done) {
+                runCatching {
+                    val intent = Intent("com.android.internal.intent.action.REQUEST_SHUTDOWN").apply {
+                        putExtra("android.intent.extra.KEY_CONFIRM", false)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    }
+                    context.startActivity(intent)
+                    done = true
+                }
+            }
+
+            // Intento 3: PowerManager.shutdown() reflection
+            if (!done) {
+                runCatching {
+                    val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+                    pm.javaClass.getMethod("shutdown",
+                        Boolean::class.javaPrimitiveType,
+                        String::class.java,
+                        Boolean::class.javaPrimitiveType
+                    ).invoke(pm, false, null, false)
+                }
+            }
+
+        }, 400L)
+
+        return true
+    }
+}
