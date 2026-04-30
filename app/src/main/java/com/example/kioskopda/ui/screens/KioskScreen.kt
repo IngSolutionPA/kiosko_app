@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -481,7 +482,7 @@ private fun KioskMainContent(
             )
         }
 
-        // ── Mensajes (preview 3) ──────────────────────────────────────────
+        // ── Mensajes ──────────────────────────────────────────
         PullToRefreshBox(
             modifier = Modifier
                 .fillMaxWidth()
@@ -491,30 +492,54 @@ private fun KioskMainContent(
         ) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFFFFFFFF),
-                shape = RoundedCornerShape(18.dp),
+                color = Color.White,
+                shape = RoundedCornerShape(20.dp),
                 shadowElevation = 2.dp
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Header row con total y badge de no leídos
                     val unread = notificacionesViewModel.unreadCount
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "Mensajes",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Color(0xFF2D3748)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .background(Color(0xFFEAF2F8), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.MailOutline,
+                                    contentDescription = null,
+                                    tint = Color(0xFF3182CE),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            Column {
+                                Text(
+                                    text = "Mensajes",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = Color(0xFF2D3748)
+                                )
+
+                                Text(
+                                    text = if (unread > 0) "$unread sin leer" else "Sin mensajes pendientes",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF718096),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
                             if (unread > 0) {
                                 Box(
                                     modifier = Modifier
@@ -532,14 +557,22 @@ private fun KioskMainContent(
                                 }
                             }
                         }
+
                         Text(
-                            text = "Ver más →",
+                            text = "Ver más",
                             fontSize = 12.sp,
                             color = Color(0xFF3182CE),
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { onOpenNotifications() }
                         )
                     }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFFE2E8F0))
+                    )
 
                     when (val state = notifState) {
                         is NotificacionesUiState.Loading -> {
@@ -550,19 +583,36 @@ private fun KioskMainContent(
                                 )
                             }
                         }
+
                         is NotificacionesUiState.Error -> {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
-                                    Text(text = "Sin conexión", color = Color(0xFFA0AEC0), fontSize = 12.sp)
+                                    Icon(
+                                        Icons.Filled.MailOutline,
+                                        contentDescription = null,
+                                        tint = Color(0xFFCBD5E0),
+                                        modifier = Modifier.size(34.dp)
+                                    )
+                                    Text(
+                                        text = "Sin conexión",
+                                        color = Color(0xFFA0AEC0),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
+
                         is NotificacionesUiState.Success -> {
                             if (state.items.isEmpty()) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
+                                        Icon(
+                                            Icons.Filled.MailOutline,
+                                            contentDescription = null,
+                                            tint = Color(0xFFCBD5E0),
+                                            modifier = Modifier.size(34.dp)
+                                        )
                                         Text(
                                             text = context.getString(R.string.dashboard_no_messages),
                                             color = Color(0xFFA0AEC0),
@@ -575,8 +625,8 @@ private fun KioskMainContent(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .verticalScroll(rememberScrollState())
-                                        .padding(horizontal = 12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(9.dp)
                                 ) {
                                     state.items.forEach { item ->
                                         NotifPreviewRow(
@@ -626,6 +676,7 @@ private fun KioskMainContent(
                 closeDialog()
                 onExitKiosk()
             },
+            deviceIdentifier = deviceIdentifier,
             imei = rawImei,
             viewModel = exitPinViewModel
         )
@@ -633,82 +684,84 @@ private fun KioskMainContent(
 }
 
 @Composable
-private fun NotifPreviewRow(item: NotificacionItem, isRead: Boolean, onClick: () -> Unit) {
-    val bgColor = if (isRead) Color(0xFFF7FAFC) else Color(0xFFEBF8FF)
-    val titleWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold
+private fun NotifPreviewRow(
+    item: NotificacionItem,
+    isRead: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor = if (isRead) Color(0xFFF8FAFC) else Color(0xFFEBF8FF)
+    val iconBg = if (isRead) Color(0xFFCBD5E0) else Color(0xFF3182CE)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(bgColor, RoundedCornerShape(10.dp))
+            .background(bgColor, RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(
-                        if (isRead) Color(0xFFCBD5E0) else Color(0xFF3182CE),
-                        RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.MailOutline,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            if (!isRead) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFE53935), RoundedCornerShape(50))
-                )
-            }
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .background(iconBg, RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Filled.MailOutline,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
         }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = item.titulo,
-                    fontWeight = titleWeight,
+                    fontWeight = if (isRead) FontWeight.SemiBold else FontWeight.Bold,
                     fontSize = 13.sp,
-                    color = Color(0xFF222222),
+                    color = Color(0xFF2D3748),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.size(4.dp))
+
+                Spacer(modifier = Modifier.width(6.dp))
+
                 PrioridadBadge(item.prioridad)
             }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
             Text(
                 text = item.mensaje,
                 fontSize = 11.sp,
-                color = Color(0xFF777777),
+                color = Color(0xFF718096),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
             if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
-                    text = listOfNotNull(item.fecha, formatBackendTime(item.hora)).joinToString("  ·  "),
+                    text = listOfNotNull(item.fecha, formatBackendTime(item.hora))
+                        .joinToString(" · "),
                     fontSize = 9.sp,
                     color = Color(0xFFA0AEC0)
                 )
             }
         }
+
         if (!isRead) {
+            Spacer(modifier = Modifier.width(8.dp))
+
             Box(
                 modifier = Modifier
-                    .size(8.dp)
-                    .background(Color(0xFF3182CE), RoundedCornerShape(50))
+                    .size(9.dp)
+                    .background(Color(0xFF3182CE), CircleShape)
             )
         }
     }

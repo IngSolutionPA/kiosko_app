@@ -42,54 +42,70 @@ fun NotificacionesListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFEDF2F7))
-            .padding(horizontal = 16.dp, vertical = 18.dp),
+            .background(Color(0xFFF6F8FB))
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 16.dp, vertical = 18.dp)
+            .padding(top = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .background(Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+                    .size(40.dp)
+                    .background(Color.White, RoundedCornerShape(14.dp))
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Volver",
-                    tint = Color(0xFF4A5568)
+                    tint = Color(0xFF2D3748)
                 )
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = if (totalCount > 0) "Mensajes" else "Mensajes",
-                    color = Color(0xFF2D3748),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-                if (unread > 0) {
-                    Box(
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
-                            .background(Color(0xFFE53E3E), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (unread > 99) "99+" else unread.toString(),
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp)
-                        )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Mensajes",
+                        color = Color(0xFF1F2937),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+
+                    if (unread > 0) {
+                        Box(
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
+                                .background(Color(0xFFE53E3E), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (unread > 99) "99+" else unread.toString(),
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp)
+                            )
+                        }
                     }
                 }
+
+                Text(
+                    text = when {
+                        totalCount <= 0 -> "No hay mensajes registrados"
+                        unread > 0 -> "$unread sin leer de $totalCount mensajes"
+                        else -> "$totalCount mensajes registrados"
+                    },
+                    color = Color(0xFF718096),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
 
@@ -102,8 +118,8 @@ fun NotificacionesListScreen(
         ) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFFFFFFFF),
-                shape = RoundedCornerShape(18.dp),
+                color = Color.White,
+                shape = RoundedCornerShape(22.dp),
                 shadowElevation = 2.dp
             ) {
                 when (val state = uiState) {
@@ -112,17 +128,54 @@ fun NotificacionesListScreen(
                             CircularProgressIndicator(color = Color(0xFF3182CE))
                         }
                     }
+
                     is NotificacionesUiState.Error -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = state.message, color = Color(0xFFE53E3E))
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Filled.MailOutline,
+                                    contentDescription = null,
+                                    tint = Color(0xFFCBD5E0),
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "No se pudieron cargar los mensajes",
+                                    color = Color(0xFFE53E3E),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = state.message,
+                                    color = Color(0xFF718096),
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
                     }
+
                     is NotificacionesUiState.Success -> {
                         if (state.items.isEmpty()) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
-                                    Text(text = "Sin mensajes", color = Color(0xFFA0AEC0))
+                                    Icon(
+                                        Icons.Filled.MailOutline,
+                                        contentDescription = null,
+                                        tint = Color(0xFFCBD5E0),
+                                        modifier = Modifier.size(38.dp)
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = "Sin mensajes",
+                                        color = Color(0xFF718096),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = "Los mensajes aparecerán aquí.",
+                                        color = Color(0xFFA0AEC0),
+                                        fontSize = 12.sp
+                                    )
                                 }
                             }
                         } else {
@@ -151,47 +204,45 @@ fun NotificacionesListScreen(
 }
 
 @Composable
-fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: () -> Unit) {
-    val bgColor = if (isRead) Color(0xFFF7FAFC) else Color(0xFFEBF8FF)
-    val titleWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold
+fun NotificacionCard(
+    item: NotificacionItem,
+    isRead: Boolean = false,
+    onClick: () -> Unit
+) {
+    val bgColor = if (isRead) Color(0xFFF8FAFC) else Color(0xFFEBF8FF)
+    val iconBg = if (isRead) Color(0xFFCBD5E0) else Color(0xFF3182CE)
+    val titleWeight = if (isRead) FontWeight.SemiBold else FontWeight.Bold
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         color = bgColor,
-        shadowElevation = 1.dp
+        shadowElevation = 0.dp
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(contentAlignment = Alignment.TopEnd) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            if (isRead) Color(0xFFCBD5E0) else Color(0xFF3182CE),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color.White)
-                }
-                if (!isRead) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(Color(0xFFE53E3E), RoundedCornerShape(50))
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(iconBg, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.MailOutline,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(21.dp)
+                )
             }
+
+            Spacer(Modifier.width(10.dp))
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -203,10 +254,14 @@ fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: (
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
+
                     Spacer(Modifier.width(6.dp))
+
                     PrioridadBadge(item.prioridad)
                 }
-                Spacer(Modifier.height(2.dp))
+
+                Spacer(Modifier.height(3.dp))
+
                 Text(
                     text = item.mensaje,
                     fontSize = 12.sp,
@@ -214,20 +269,27 @@ fun NotificacionCard(item: NotificacionItem, isRead: Boolean = false, onClick: (
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+
                 if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(4.dp))
+
                     Text(
-                        text = listOfNotNull(item.fecha, formatBackendTime(item.hora)).joinToString("  ·  "),
+                        text = listOfNotNull(item.fecha, formatBackendTime(item.hora))
+                            .joinToString(" · "),
                         fontSize = 10.sp,
-                        color = Color(0xFFA0AEC0)
+                        color = Color(0xFFA0AEC0),
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
+
             if (!isRead) {
+                Spacer(Modifier.width(8.dp))
+
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
-                        .background(Color(0xFF3182CE), RoundedCornerShape(50))
+                        .size(9.dp)
+                        .background(Color(0xFF3182CE), CircleShape)
                 )
             }
         }

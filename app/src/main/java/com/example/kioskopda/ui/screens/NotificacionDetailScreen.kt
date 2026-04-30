@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.sp
 import com.example.kioskopda.network.NotificacionItem
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 
 // Helpers de prioridad reutilizables
 fun prioridadLabel(p: Int) = when (p) { 1 -> "Alta"; 2 -> "Media"; else -> "Baja" }
@@ -71,112 +74,155 @@ fun NotificacionDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFEDF2F7))
-            .padding(horizontal = 16.dp, vertical = 18.dp),
+            .background(Color(0xFFF6F8FB))
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 16.dp, vertical = 18.dp)
+            .padding(top = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .background(Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+                    .size(40.dp)
+                    .background(Color.White, RoundedCornerShape(14.dp))
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Volver",
-                    tint = Color(0xFF4A5568)
+                    tint = Color(0xFF2D3748),
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Text(
-                text = "Detalle del mensaje",
-                color = Color(0xFF2D3748),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
+
+            Column {
+                Text(
+                    text = "Detalle del mensaje",
+                    color = Color(0xFF1F2937),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+
+                Text(
+                    text = "Información recibida por el dispositivo",
+                    color = Color(0xFF718096),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            color = Color(0xFFFFFFFF),
-            shape = RoundedCornerShape(18.dp),
+            color = Color.White,
+            shape = RoundedCornerShape(22.dp),
             shadowElevation = 2.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                // Icono + badge prioridad en misma fila
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
+                    verticalAlignment = Alignment.Top
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
-                            .background(Color(0xFF3182CE), RoundedCornerShape(16.dp)),
+                            .size(58.dp)
+                            .background(Color(0xFFEAF2F8), RoundedCornerShape(18.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Filled.MailOutline,
                             contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            tint = Color(0xFF3182CE),
+                            modifier = Modifier.size(30.dp)
                         )
                     }
+
                     PrioridadBadge(item.prioridad)
                 }
 
-                Text(
-                    text = item.titulo,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF2D3748)
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = item.titulo,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 21.sp,
+                        color = Color(0xFF1F2937),
+                        lineHeight = 26.sp
+                    )
 
-                // Fecha y hora si están disponibles
-                if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (!item.fecha.isNullOrBlank()) {
-                            Text(
-                                text = "📅 ${item.fecha}",
-                                fontSize = 12.sp,
-                                color = Color(0xFF718096)
-                            )
-                        }
-                        if (!item.hora.isNullOrBlank()) {
-                            Text(
-                                text = "🕐 ${formatBackendTime(item.hora)}",
-                                fontSize = 12.sp,
-                                color = Color(0xFF718096)
-                            )
+                    if (!item.fecha.isNullOrBlank() || !item.hora.isNullOrBlank()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (!item.fecha.isNullOrBlank()) {
+                                InfoPill(text = item.fecha)
+                            }
+
+                            if (!item.hora.isNullOrBlank()) {
+                                InfoPill(text = formatBackendTime(item.hora) ?: "")                            }
                         }
                     }
                 }
 
                 HorizontalDivider(color = Color(0xFFE2E8F0))
 
-                Text(
-                    text = item.mensaje,
-                    fontSize = 15.sp,
-                    color = Color(0xFF4A5568),
-                    lineHeight = 22.sp
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Mensaje",
+                        color = Color(0xFF718096),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFF8FAFC),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text(
+                            text = item.mensaje,
+                            fontSize = 15.sp,
+                            color = Color(0xFF4A5568),
+                            lineHeight = 23.sp,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun InfoPill(text: String) {
+    Box(
+        modifier = Modifier
+            .background(Color(0xFFF1F5F9), RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = Color(0xFF64748B),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

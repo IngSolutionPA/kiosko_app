@@ -4,31 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -38,8 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.kioskopda.DeviceIdentifier
+import com.example.kioskopda.DeviceIdentifierSource
 import com.example.kioskopda.R
 import com.example.kioskopda.ui.components.KioskAlertDialog
 
@@ -47,6 +35,7 @@ import com.example.kioskopda.ui.components.KioskAlertDialog
 fun ExitPinScreen(
     onCancel: () -> Unit,
     onPinOk: () -> Unit,
+    deviceIdentifier: DeviceIdentifier?,
     imei: String = "",
     viewModel: ExitPinViewModel
 ) {
@@ -62,6 +51,24 @@ fun ExitPinScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val focusRequester = remember { FocusRequester() }
+
+    val imeiText = remember(deviceIdentifier) {
+        val value = deviceIdentifier?.value ?: ""
+
+        when (deviceIdentifier?.source) {
+            DeviceIdentifierSource.IMEI ->
+                context.getString(R.string.dashboard_imei_format, value)
+
+            DeviceIdentifierSource.ANDROID_ID ->
+                context.getString(R.string.device_identifier_fallback_android_id, value)
+
+            DeviceIdentifierSource.UNAVAILABLE ->
+                context.getString(R.string.device_identifier_unavailable)
+
+            else ->
+                context.getString(R.string.device_identifier_loading)
+        }
+    }
 
     LaunchedEffect(uiState) {
         when (uiState) {
@@ -87,7 +94,6 @@ fun ExitPinScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Bloquea que los toques pasen al composable que está debajo
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -148,7 +154,8 @@ fun ExitPinScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFFEDF2F7))   // mismo fondo suave
+                    .background(Color(0xFFF6F8FB))
+                    .padding(horizontal = 22.dp, vertical = 24.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -156,213 +163,265 @@ fun ExitPinScreen(
                         .align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "¿Quieres salir del modo kiosko?",
-                        color = Color(0xFF2D3748),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
+                            .size(72.dp)
+                            .background(Color(0xFF2563EB), CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Surface(
+                        Icon(
+                            imageVector = Icons.Filled.Security,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Text(
+                        text = "Salida del modo kiosco",
+                        color = Color(0xFF1F2937),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Ingrese el PIN autorizado para continuar",
+                        color = Color(0xFF6B7280),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(28.dp),
+                        color = Color.White,
+                        shadowElevation = 8.dp
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp),
-                            shape = RoundedCornerShape(22.dp),
-                            color = Color(0xFF3182CE)   // azul corporativo
+                                .padding(horizontal = 22.dp, vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Box(
-                                contentAlignment = Alignment.TopCenter,
-                                modifier = Modifier.fillMaxSize()
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = null,
+                                    tint = Color(0xFF2563EB),
+                                    modifier = Modifier.size(22.dp)
+                                )
+
                                 Text(
-                                    text = "Ingrese PIN de autorizacion",
-                                    color = Color.White,
+                                    text = "Ingrese PIN de autorización",
+                                    color = Color(0xFF0F172A),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    modifier = Modifier.padding(top = 18.dp)
+                                    fontSize = 16.sp
                                 )
                             }
-                        }
 
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 50.dp),
-                            shape = RoundedCornerShape(22.dp),
-                            color = Color(0xFFFFFFFF),
-                            shadowElevation = 2.dp
-                        ) {
-                            Column(
+                            Spacer(modifier = Modifier.height(22.dp))
+
+                            BasicTextField(
+                                value = pin,
+                                onValueChange = {
+                                    if (it.length <= 4 && it.all { c -> c.isDigit() }) {
+                                        pin = it
+                                        if (showError) viewModel.resetState()
+                                    }
+                                },
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Spacer(modifier = Modifier.height(16.dp))
+                                    .size(1.dp)
+                                    .alpha(0f)
+                                    .focusRequester(focusRequester),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.NumberPassword
+                                ),
+                                singleLine = true,
+                                enabled = !isLoading
+                            )
 
-                                BasicTextField(
-                                    value = pin,
-                                    onValueChange = {
-                                        if (it.length <= 4 && it.all { c -> c.isDigit() }) {
-                                            pin = it
-                                            if (showError) viewModel.resetState()
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .size(1.dp)
-                                        .alpha(0f)
-                                        .focusRequester(focusRequester),
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.NumberPassword
-                                    ),
-                                    singleLine = true,
-                                    enabled = !isLoading
-                                )
-
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = Modifier.clickable {
-                                        if (!isLoading) focusRequester.requestFocus()
-                                    }
-                                ) {
-                                    repeat(4) { index ->
-                                        val char = pin.getOrNull(index)?.toString() ?: ""
-                                        val isActive = index == pin.length && pin.length < 4
-                                        val isFilled = index < pin.length
-
-                                        val borderColor = when {
-                                            showError -> Color(0xFFE53E3E)
-                                            isActive -> Color(0xFF3182CE)
-                                            isFilled -> Color(0xFF3182CE)
-                                            else -> Color(0xFFCBD5E0)
-                                        }
-
-                                        val backgroundColor = when {
-                                            showError && isFilled -> Color(0xFFFFF5F5)
-                                            isActive -> Color(0xFFEBF8FF)
-                                            else -> Color(0xFFF7FAFC)
-                                        }
-
-                                        Box(
-                                            modifier = Modifier
-                                                .size(50.dp)
-                                                .background(backgroundColor, RoundedCornerShape(14.dp))
-                                                .border(2.dp, borderColor, RoundedCornerShape(14.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = char,
-                                                color = Color(0xFF666666),
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.clickable {
+                                    if (!isLoading) focusRequester.requestFocus()
                                 }
+                            ) {
+                                repeat(4) { index ->
+                                    val char = pin.getOrNull(index)?.toString() ?: ""
+                                    val isActive = index == pin.length && pin.length < 4
+                                    val isFilled = index < pin.length
 
-                                Spacer(modifier = Modifier.height(24.dp))
+                                    val borderColor = when {
+                                        showError -> Color(0xFFDC2626)
+                                        isActive -> Color(0xFF2563EB)
+                                        isFilled -> Color(0xFF2563EB)
+                                        else -> Color(0xFFCBD5E1)
+                                    }
 
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(70.dp),
-                                    shape = RoundedCornerShape(18.dp),
-                                    color = Color(0xFFF7FAFC)
-                                ) {
+                                    val backgroundColor = when {
+                                        showError && isFilled -> Color(0xFFFEF2F2)
+                                        isActive -> Color(0xFFEFF6FF)
+                                        isFilled -> Color(0xFFEFF6FF)
+                                        else -> Color(0xFFF8FAFC)
+                                    }
+
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .border(
-                                                1.dp,
-                                                if (showError) Color(0xFFE53E3E) else Color(0xFFE2E8F0),
-                                                RoundedCornerShape(18.dp)
-                                            ),
+                                            .size(58.dp)
+                                            .background(backgroundColor, RoundedCornerShape(16.dp))
+                                            .border(2.dp, borderColor, RoundedCornerShape(16.dp)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        if (isLoading) {
-                                            CircularProgressIndicator(
-                                                color = Color(0xFF3182CE),
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        } else {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Text(
-                                                    text = if (showError) errorMensaje else "Ingrese el PIN",
-                                                    color = if (showError) Color(0xFFE53E3E) else Color(0xFF718096),
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 13.sp
-                                                )
+                                        Text(
+                                            text = char,
+                                            color = Color(0xFF0F172A),
+                                            fontSize = 22.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                }
+                            }
 
-                                                if (intentosText.isNotEmpty()) {
-                                                    Text(
-                                                        text = intentosText,
-                                                        fontSize = 11.sp,
-                                                        color = Color(0xFFA0AEC0)
-                                                    )
-                                                }
+                            Spacer(modifier = Modifier.height(22.dp))
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(72.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (showError) Color(0xFFFEF2F2) else Color(0xFFF8FAFC)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .border(
+                                            1.dp,
+                                            if (showError) Color(0xFFDC2626) else Color(0xFFE2E8F0),
+                                            RoundedCornerShape(20.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isLoading) {
+                                        CircularProgressIndicator(
+                                            color = Color(0xFF2563EB),
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    } else {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = if (showError) errorMensaje else "Ingrese los 4 dígitos del PIN",
+                                                color = if (showError) Color(0xFFDC2626) else Color(0xFF64748B),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                textAlign = TextAlign.Center
+                                            )
+
+                                            if (intentosText.isNotEmpty()) {
+                                                Spacer(modifier = Modifier.height(3.dp))
+
+                                                Text(
+                                                    text = intentosText,
+                                                    fontSize = 11.sp,
+                                                    color = Color(0xFF94A3B8),
+                                                    fontWeight = FontWeight.Medium
+                                                )
                                             }
                                         }
                                     }
                                 }
+                            }
 
-                                Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(22.dp))
 
-                                Button(
-                                    onClick = {
-                                        if (!isLoading && pin.length == 4) {
-                                            viewModel.validatePin(pin, imei)
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(60.dp),
-                                    shape = RoundedCornerShape(18.dp),
-                                    enabled = !isLoading && pin.length == 4,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF3182CE)
-                                    )
-                                ) {
-                                    Text("Autorizar", fontWeight = FontWeight.Bold)
-                                }
+                            Button(
+                                onClick = {
+                                    if (!isLoading && pin.length == 4) {
+                                        viewModel.validatePin(pin, imei)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(58.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                enabled = !isLoading && pin.length == 4,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2563EB),
+                                    disabledContainerColor = Color(0xFF93C5FD),
+                                    contentColor = Color.White,
+                                    disabledContentColor = Color.White
+                                )
+                            ) {
+                                Text(
+                                    text = "Autorizar salida",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
 
-                                Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                                Button(
-                                    onClick = {
-                                        viewModel.resetState()
-                                        onCancel()
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(60.dp),
-                                    shape = RoundedCornerShape(18.dp),
-                                    enabled = !isLoading,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF4A5568)
-                                    )
-                                ) {
-                                    Text("Cancelar", fontWeight = FontWeight.Bold)
-                                }
+                            Button(
+                                onClick = {
+                                    viewModel.resetState()
+                                    onCancel()
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(58.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                enabled = !isLoading,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFE2E8F0),
+                                    contentColor = Color(0xFF334155),
+                                    disabledContainerColor = Color(0xFFCBD5E1),
+                                    disabledContentColor = Color(0xFF64748B)
+                                )
+                            ) {
+                                Text(
+                                    text = "Cancelar",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
                             }
                         }
                     }
                 }
 
-                Text(
-                    text = context.getString(R.string.dashboard_managed_by_it),
-                    color = Color(0xFF718096),
-                    fontSize = 12.sp,
+                Column(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 20.dp)
-                )
+                        .padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ){
+                    Text(
+                        text = imeiText,
+                        color = Color(0xFF4A5568),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = context.getString(R.string.dashboard_managed_by_it),
+                        color = Color(0xFF718096),
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
 
