@@ -23,6 +23,15 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
     private val _uiState = MutableStateFlow<NotificacionesUiState>(NotificacionesUiState.Loading)
     val uiState: StateFlow<NotificacionesUiState> = _uiState
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
+    private val _previewUiState = MutableStateFlow<NotificacionesUiState>(NotificacionesUiState.Loading)
+    val previewUiState: StateFlow<NotificacionesUiState> = _previewUiState
+
+    private val _previewIsRefreshing = MutableStateFlow(false)
+    val previewIsRefreshing: StateFlow<Boolean> = _previewIsRefreshing
+
     private val _readIds = MutableStateFlow<Set<Int>>(repo.getReadIds())
     val readIds: StateFlow<Set<Int>> = _readIds
 
@@ -39,8 +48,33 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun loadAll() {
+        loadAllInternal(forceRefresh = false)
+    }
+
+    fun refreshAll() {
+        loadAllInternal(forceRefresh = true)
+    }
+
+    fun loadPreview() {
+        loadPreviewInternal(forceRefresh = false)
+    }
+
+    fun refreshPreview() {
+        loadPreviewInternal(forceRefresh = true)
+    }
+
+    private fun loadAllInternal(forceRefresh: Boolean) {
         viewModelScope.launch {
-            _uiState.value = NotificacionesUiState.Loading
+            if (_isRefreshing.value) return@launch
+
+            val hasExistingData = _uiState.value is NotificacionesUiState.Success
+            if (!hasExistingData) {
+                _uiState.value = NotificacionesUiState.Loading
+            }
+            if (forceRefresh || hasExistingData) {
+                _isRefreshing.value = true
+            }
+
             try {
                 val response = RetrofitClient.api.getNotificaciones(page = 1, limit = 100)
                 if (response.isSuccessful) {
@@ -55,13 +89,24 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
                 }
             } catch (e: Exception) {
                 _uiState.value = NotificacionesUiState.Error(e.message ?: "Error de conexión")
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
 
-    fun loadPreview() {
+    private fun loadPreviewInternal(forceRefresh: Boolean) {
         viewModelScope.launch {
-            _uiState.value = NotificacionesUiState.Loading
+            if (_previewIsRefreshing.value) return@launch
+
+            val hasExistingData = _previewUiState.value is NotificacionesUiState.Success
+            if (!hasExistingData) {
+                _previewUiState.value = NotificacionesUiState.Loading
+            }
+            if (forceRefresh || hasExistingData) {
+                _previewIsRefreshing.value = true
+            }
+
             try {
                 val response = RetrofitClient.api.getNotificaciones(page = 1, limit = 3)
                 if (response.isSuccessful) {
@@ -70,12 +115,14 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
                         repo.saveTotalCount(total)
                         _totalCount.value = total
                     }
-                    _uiState.value = NotificacionesUiState.Success(body?.data ?: emptyList())
+                    _previewUiState.value = NotificacionesUiState.Success(body?.data ?: emptyList())
                 } else {
-                    _uiState.value = NotificacionesUiState.Error("Error ${response.code()}")
+                    _previewUiState.value = NotificacionesUiState.Error("Error ${response.code()}")
                 }
             } catch (e: Exception) {
-                _uiState.value = NotificacionesUiState.Error(e.message ?: "Error de conexión")
+                _previewUiState.value = NotificacionesUiState.Error(e.message ?: "Error de conexión")
+            } finally {
+                _previewIsRefreshing.value = false
             }
         }
     }

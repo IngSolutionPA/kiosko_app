@@ -13,6 +13,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +24,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.Note
@@ -38,9 +42,11 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.SignalCellular4Bar
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -112,6 +118,7 @@ private sealed class KioskNavScreen {
     data class NotificationDetail(val item: NotificacionItem) : KioskNavScreen()
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun KioskMainContent(
     modifier: Modifier = Modifier,
@@ -124,7 +131,8 @@ private fun KioskMainContent(
     var showPinDialog by remember { mutableStateOf(false) }
     val exitPinViewModel: ExitPinViewModel = viewModel()
     val notificacionesViewModel: NotificacionesViewModel = viewModel()
-    val notifState by notificacionesViewModel.uiState.collectAsState()
+    val notifState by notificacionesViewModel.previewUiState.collectAsState()
+    val isPreviewRefreshing by notificacionesViewModel.previewIsRefreshing.collectAsState()
     val readIds by notificacionesViewModel.readIds.collectAsState()
 
     LaunchedEffect(Unit) { notificacionesViewModel.loadPreview() }
@@ -283,7 +291,7 @@ private fun KioskMainContent(
         modifier = modifier
             .background(Color(0xFFEDF2F7))
             .padding(horizontal = 16.dp, vertical = 18.dp)
-            .padding(top = 8.dp),
+            .padding(top = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // ── Card superior ─────────────────────────────────────────────────
@@ -465,104 +473,112 @@ private fun KioskMainContent(
         }
 
         // ── Mensajes (preview 3) ──────────────────────────────────────────
-        Surface(
+        PullToRefreshBox(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            color = Color(0xFFFFFFFF),
-            shape = RoundedCornerShape(18.dp),
-            shadowElevation = 2.dp
+            isRefreshing = isPreviewRefreshing,
+            onRefresh = { notificacionesViewModel.refreshPreview() }
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Header row con total y badge de no leídos
-                val unread = notificacionesViewModel.unreadCount
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFFFFFFFF),
+                shape = RoundedCornerShape(18.dp),
+                shadowElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Header row con total y badge de no leídos
+                    val unread = notificacionesViewModel.unreadCount
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Mensajes",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = Color(0xFF2D3748)
-                        )
-                        if (unread > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0xFFE53E3E), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (unread > 99) "99+" else unread.toString(),
-                                    color = Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                    Text(
-                        text = "Ver más →",
-                        fontSize = 12.sp,
-                        color = Color(0xFF3182CE),
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { onOpenNotifications() }
-                    )
-                }
-
-                when (val state = notifState) {
-                    is NotificacionesUiState.Loading -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                color = Color(0xFF3182CE),
-                                modifier = Modifier.size(28.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Mensajes",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFF2D3748)
                             )
-                        }
-                    }
-                    is NotificacionesUiState.Error -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
-                                Text(text = "Sin conexión", color = Color(0xFFA0AEC0), fontSize = 12.sp)
-                            }
-                        }
-                    }
-                    is NotificacionesUiState.Success -> {
-                        if (state.items.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
+                            if (unread > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
+                                        .background(Color(0xFFE53E3E), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = context.getString(R.string.dashboard_no_messages),
-                                        color = Color(0xFFA0AEC0),
-                                        fontWeight = FontWeight.Medium
+                                        text = if (unread > 99) "99+" else unread.toString(),
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp)
                                     )
                                 }
                             }
-                        } else {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                state.items.forEach { item ->
-                                    NotifPreviewRow(
-                                        item = item,
-                                        isRead = item.id in readIds,
-                                        onClick = {
-                                            notificacionesViewModel.markAsRead(item.id)
-                                            onOpenNotificationDetail(item)
-                                        }
-                                    )
+                        }
+                        Text(
+                            text = "Ver más →",
+                            fontSize = 12.sp,
+                            color = Color(0xFF3182CE),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { onOpenNotifications() }
+                        )
+                    }
+
+                    when (val state = notifState) {
+                        is NotificacionesUiState.Loading -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFF3182CE),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+                        is NotificacionesUiState.Error -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
+                                    Text(text = "Sin conexión", color = Color(0xFFA0AEC0), fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        is NotificacionesUiState.Success -> {
+                            if (state.items.isEmpty()) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Filled.MailOutline, contentDescription = null, tint = Color(0xFFCBD5E0))
+                                        Text(
+                                            text = context.getString(R.string.dashboard_no_messages),
+                                            color = Color(0xFFA0AEC0),
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(rememberScrollState())
+                                        .padding(horizontal = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    state.items.forEach { item ->
+                                        NotifPreviewRow(
+                                            item = item,
+                                            isRead = item.id in readIds,
+                                            onClick = {
+                                                notificacionesViewModel.markAsRead(item.id)
+                                                onOpenNotificationDetail(item)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
