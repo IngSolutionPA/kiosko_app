@@ -1,6 +1,7 @@
 package com.example.kioskopda.ui.screens
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kioskopda.data.ReadStatusRepository
@@ -32,7 +33,7 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
     private val _previewIsRefreshing = MutableStateFlow(false)
     val previewIsRefreshing: StateFlow<Boolean> = _previewIsRefreshing
 
-    private val _readIds = MutableStateFlow<Set<Int>>(repo.getReadIds())
+    private val _readIds = MutableStateFlow(repo.getReadIds())
     val readIds: StateFlow<Set<Int>> = _readIds
 
     private val _totalCount = MutableStateFlow(repo.getTotalCount())
@@ -123,6 +124,7 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
                     _previewUiState.value = NotificacionesUiState.Error("Error ${response.code()}")
                 }
             } catch (e: Exception) {
+                Log.e("NotificacionesVM", "Error cargando preview", e)
                 _previewUiState.value = NotificacionesUiState.Error("Sin conexión")
             } finally {
                 _previewIsRefreshing.value = false
