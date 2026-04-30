@@ -30,7 +30,7 @@
     <string name="copy_command">Copiar comando</string>
     <string name="command_copied">Comando copiado al portapapeles</string>
     <string name="dashboard_institution">Instituto de Mercadeo Agropecuario</string>
-    <string name="dashboard_apps">APPS</string>
+    <string name="dashboard_apps">Aplicaciones Permitidas</string>
     <string name="dashboard_network">RED</string>
     <string name="dashboard_no_messages">No tiene mensajes nuevos</string>
     <string name="dashboard_managed_by_it">Dispositivo administrado por Informatica</string>

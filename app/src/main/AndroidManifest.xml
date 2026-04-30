@@ -29,6 +29,8 @@
             android:launchMode="singleTask"
             android:excludeFromRecents="true"
             android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:theme="@style/Theme.KioskoPDA">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

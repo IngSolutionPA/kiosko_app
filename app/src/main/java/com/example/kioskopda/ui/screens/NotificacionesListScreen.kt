@@ -1,21 +1,32 @@
 package com.example.kioskopda.ui.screens
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,7 +48,9 @@ fun NotificacionesListScreen(
     val totalCount by viewModel.totalCount.collectAsState()
     val unread = viewModel.unreadCount
 
-    LaunchedEffect(Unit) { viewModel.loadAll() }
+    LaunchedEffect(Unit) {
+        viewModel.loadAll()
+    }
 
     Column(
         modifier = Modifier
@@ -78,7 +91,7 @@ fun NotificacionesListScreen(
                         fontSize = 20.sp
                     )
 
-                    if (unread > 0) {
+                    if (unread > 0 && uiState !is NotificacionesUiState.Error) {
                         Box(
                             modifier = Modifier
                                 .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
@@ -97,10 +110,14 @@ fun NotificacionesListScreen(
                 }
 
                 Text(
-                    text = when {
-                        totalCount <= 0 -> "No hay mensajes registrados"
-                        unread > 0 -> "$unread sin leer de $totalCount mensajes"
-                        else -> "$totalCount mensajes registrados"
+                    text = when (uiState) {
+                        is NotificacionesUiState.Error -> "Sin conexión"
+                        is NotificacionesUiState.Loading -> "Cargando mensajes"
+                        is NotificacionesUiState.Success -> when {
+                            totalCount <= 0 -> "No hay mensajes registrados"
+                            unread > 0 -> "$unread sin leer de $totalCount mensajes"
+                            else -> "$totalCount mensajes registrados"
+                        }
                     },
                     color = Color(0xFF718096),
                     fontSize = 12.sp,
@@ -124,39 +141,56 @@ fun NotificacionesListScreen(
             ) {
                 when (val state = uiState) {
                     is NotificacionesUiState.Loading -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Color(0xFF3182CE))
+                        val skeletonCount = when {
+                            totalCount >= 8 -> 8
+                            totalCount in 1..7 -> totalCount
+                            else -> 6
+                        }
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(skeletonCount) {
+                                NotificacionSkeleton()
+                            }
                         }
                     }
 
                     is NotificacionesUiState.Error -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Filled.MailOutline,
-                                    contentDescription = null,
-                                    tint = Color(0xFFCBD5E0),
-                                    modifier = Modifier.size(36.dp)
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    text = "No se pudieron cargar los mensajes",
-                                    color = Color(0xFFE53E3E),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                                Text(
-                                    text = state.message,
-                                    color = Color(0xFF718096),
-                                    fontSize = 11.sp
-                                )
-                            }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.MailOutline,
+                                contentDescription = null,
+                                tint = Color(0xFFCBD5E0),
+                                modifier = Modifier.size(36.dp)
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                text = "Sin conexión",
+                                color = Color(0xFFE53E3E),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
                         }
                     }
 
                     is NotificacionesUiState.Success -> {
                         if (state.items.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         Icons.Filled.MailOutline,
@@ -164,13 +198,16 @@ fun NotificacionesListScreen(
                                         tint = Color(0xFFCBD5E0),
                                         modifier = Modifier.size(38.dp)
                                     )
+
                                     Spacer(Modifier.height(8.dp))
+
                                     Text(
                                         text = "Sin mensajes",
                                         color = Color(0xFF718096),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
                                     )
+
                                     Text(
                                         text = "Los mensajes aparecerán aquí.",
                                         color = Color(0xFFA0AEC0),
@@ -179,26 +216,53 @@ fun NotificacionesListScreen(
                                 }
                             }
                         } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                items(state.items) { item ->
-                                    NotificacionCard(
-                                        item = item,
-                                        isRead = item.id in readIds,
-                                        onClick = {
-                                            viewModel.markAsRead(item.id)
-                                            onOpenDetail(item)
-                                        }
-                                    )
+                            NotificacionesListContent(
+                                items = state.items,
+                                readIds = readIds,
+                                onItemClick = { item ->
+                                    viewModel.markAsRead(item.id)
+                                    onOpenDetail(item)
                                 }
-                            }
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificacionesListContent(
+    items: List<NotificacionItem>,
+    readIds: Set<Int>,
+    onItemClick: (NotificacionItem) -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(items) {
+        visible = true
+    }
+
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "messagesFade"
+    )
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .alpha(alpha),
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(items) { item ->
+            NotificacionCard(
+                item = item,
+                isRead = item.id in readIds,
+                onClick = { onItemClick(item) }
+            )
         }
     }
 }
@@ -242,9 +306,7 @@ fun NotificacionCard(
             Spacer(Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = item.titulo,
                         fontWeight = titleWeight,
@@ -294,4 +356,105 @@ fun NotificacionCard(
             }
         }
     }
+}
+
+@Composable
+fun NotificacionSkeleton() {
+    val shimmerBrush = rememberShimmerBrush()
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFF8FAFC),
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ShimmerBox(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                brush = shimmerBrush
+            )
+
+            Spacer(Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                ShimmerBox(
+                    modifier = Modifier
+                        .fillMaxWidth(0.72f)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    brush = shimmerBrush
+                )
+
+                Spacer(Modifier.height(7.dp))
+
+                ShimmerBox(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    brush = shimmerBrush
+                )
+
+                Spacer(Modifier.height(5.dp))
+
+                ShimmerBox(
+                    modifier = Modifier
+                        .fillMaxWidth(0.82f)
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    brush = shimmerBrush
+                )
+
+                Spacer(Modifier.height(7.dp))
+
+                ShimmerBox(
+                    modifier = Modifier
+                        .width(95.dp)
+                        .height(9.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    brush = shimmerBrush
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShimmerBox(
+    modifier: Modifier,
+    brush: Brush
+) {
+    Box(
+        modifier = modifier.background(brush)
+    )
+}
+
+@Composable
+private fun rememberShimmerBrush(): Brush {
+    val transition = rememberInfiniteTransition(label = "shimmerTransition")
+
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1100),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmerTranslate"
+    )
+
+    return Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFE2E8F0),
+            Color(0xFFF8FAFC),
+            Color(0xFFE2E8F0)
+        ),
+        start = Offset(translateAnim - 1000f, translateAnim - 1000f),
+        end = Offset(translateAnim, translateAnim)
+    )
 }

@@ -50,6 +50,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         kioskManager = KioskManager(this)
+        if (kioskManager.canUseFullKiosk()) {
+            kioskManager.applyKioskPolicies(KioskConfig.allowedPackages)
+            kioskManager.startLockTask(this)
+        }
         deviceIdentifierProvider = DeviceIdentifierProvider(this)
         refreshDeviceIdentifier()
 

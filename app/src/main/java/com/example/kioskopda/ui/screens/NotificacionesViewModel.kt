@@ -99,28 +99,31 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             if (_previewIsRefreshing.value) return@launch
 
-            val hasExistingData = _previewUiState.value is NotificacionesUiState.Success
-            if (!hasExistingData) {
-                _previewUiState.value = NotificacionesUiState.Loading
-            }
-            if (forceRefresh || hasExistingData) {
+            val hasSuccess = _previewUiState.value is NotificacionesUiState.Success
+
+            if (forceRefresh) {
                 _previewIsRefreshing.value = true
+            } else if (!hasSuccess) {
+                _previewUiState.value = NotificacionesUiState.Loading
             }
 
             try {
                 val response = RetrofitClient.api.getNotificaciones(page = 1, limit = 3)
+
                 if (response.isSuccessful) {
                     val body = response.body()
+
                     body?.totalNotificaciones?.let { total ->
                         repo.saveTotalCount(total)
                         _totalCount.value = total
                     }
+
                     _previewUiState.value = NotificacionesUiState.Success(body?.data ?: emptyList())
                 } else {
                     _previewUiState.value = NotificacionesUiState.Error("Error ${response.code()}")
                 }
             } catch (e: Exception) {
-                _previewUiState.value = NotificacionesUiState.Error(e.message ?: "Error de conexión")
+                _previewUiState.value = NotificacionesUiState.Error("Sin conexión")
             } finally {
                 _previewIsRefreshing.value = false
             }

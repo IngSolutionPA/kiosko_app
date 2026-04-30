@@ -83,7 +83,15 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import kotlinx.coroutines.withTimeout
 
 @Composable
 fun KioskScreen(
@@ -139,8 +147,11 @@ private fun KioskMainContent(
     val isPreviewRefreshing by notificacionesViewModel.previewIsRefreshing.collectAsState()
     val readIds by notificacionesViewModel.readIds.collectAsState()
 
-    LaunchedEffect(Unit) { notificacionesViewModel.loadPreview() }
-
+    LaunchedEffect(Unit) {
+        if (notifState !is NotificacionesUiState.Success) {
+            notificacionesViewModel.loadPreview()
+        }
+    }
     val imeiText = remember(deviceIdentifier) {
         val value = deviceIdentifier?.value ?: ""
 
@@ -533,14 +544,18 @@ private fun KioskMainContent(
                                 )
 
                                 Text(
-                                    text = if (unread > 0) "$unread sin leer" else "Sin mensajes pendientes",
+                                    text = when (notifState) {
+                                        is NotificacionesUiState.Error -> "Sin conexión"
+                                        is NotificacionesUiState.Loading -> "Cargando mensajes"
+                                        else -> if (unread > 0) "$unread sin leer" else "Sin mensajes pendientes"
+                                    },
                                     fontSize = 11.sp,
                                     color = Color(0xFF718096),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
 
-                            if (unread > 0) {
+                            if (unread > 0 && notifState !is NotificacionesUiState.Error) {
                                 Box(
                                     modifier = Modifier
                                         .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
@@ -576,30 +591,43 @@ private fun KioskMainContent(
 
                     when (val state = notifState) {
                         is NotificacionesUiState.Loading -> {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(
-                                    color = Color(0xFF3182CE),
-                                    modifier = Modifier.size(28.dp)
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(9.dp)
+                            ) {
+                                repeat(3) {
+                                    NotifPreviewSkeleton()
+                                }
                             }
                         }
 
                         is NotificacionesUiState.Error -> {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Filled.MailOutline,
-                                        contentDescription = null,
-                                        tint = Color(0xFFCBD5E0),
-                                        modifier = Modifier.size(34.dp)
-                                    )
-                                    Text(
-                                        text = "Sin conexión",
-                                        color = Color(0xFFA0AEC0),
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Filled.MailOutline,
+                                    contentDescription = null,
+                                    tint = Color(0xFFCBD5E0),
+                                    modifier = Modifier.size(34.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = "Sin conexión",
+                                    color = Color(0xFFA0AEC0),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
 
@@ -768,6 +796,84 @@ private fun NotifPreviewRow(
 }
 
 @Composable
+private fun NotifPreviewSkeleton() {
+    val brush = rememberShimmerBrush()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8FAFC), RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(brush)
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.65f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(brush)
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(brush)
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(brush)
+            )
+        }
+    }
+}
+
+@Composable
+private fun rememberShimmerBrush(): Brush {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+
+    val offset by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmerAnim"
+    )
+
+    return Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFE2E8F0),
+            Color(0xFFF8FAFC),
+            Color(0xFFE2E8F0)
+        ),
+        start = Offset(offset - 1000f, offset - 1000f),
+        end = Offset(offset, offset)
+    )
+}
+
+@Composable
 private fun AppTile(
     modifier: Modifier = Modifier,
     color: Color,
@@ -808,11 +914,10 @@ private fun AppTile(
                 )
             }
 
-            // 👇 SIEMPRE muestra el nombre
             if (label != null) {
                 Text(
                     text = label,
-                    color = Color.Black, // 👈 aquí cambias color del texto
+                    color = Color.Black,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     textAlign = TextAlign.Center,
@@ -822,6 +927,7 @@ private fun AppTile(
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
