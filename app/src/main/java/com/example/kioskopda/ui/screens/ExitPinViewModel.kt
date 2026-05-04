@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import com.example.kioskopda.network.CorreoRequest
 import com.example.kioskopda.network.ValidacionRequest
 
+
 sealed class PinUiState {
     object Idle : PinUiState()
     object Loading : PinUiState()
@@ -112,7 +113,6 @@ class ExitPinViewModel : ViewModel() {
         }
     }
 
-    /** Consulta al backend si el dispositivo fue desbloqueado por el administrador */
     fun checkUnblock(
         imei: String,
         onResult: (String?, String?) -> Unit
@@ -127,7 +127,7 @@ class ExitPinViewModel : ViewModel() {
 
                 val body = response.body()
 
-                if (body == null || !body.ok) {
+                if (!response.isSuccessful || body == null) {
                     onResult("Error", "Error validando dispositivo")
                     _uiState.value = PinUiState.Blocked("Error")
                     return@launch
@@ -153,5 +153,30 @@ class ExitPinViewModel : ViewModel() {
 
     fun resetState() {
         _uiState.value = PinUiState.Idle
+    }
+
+
+    fun verificarBloqueoInicial(
+        imei: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.api.postValidacion(
+                    ValidacionRequest(imei = imei)
+                )
+
+                val body = response.body()
+
+                if (response.isSuccessful && body != null) {
+                    val estaBloqueado = body.blocked == false
+                    onResult(estaBloqueado)
+                } else {
+                    onResult(false)
+                }
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
     }
 }

@@ -91,7 +91,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import kotlinx.coroutines.withTimeout
+import com.example.kioskopda.ui.components.KioskAlertDialog
 
 @Composable
 fun KioskScreen(
@@ -107,7 +107,6 @@ fun KioskScreen(
         is KioskNavScreen.Main -> KioskMainContent(
             modifier = modifier,
             deviceIdentifier = deviceIdentifier,
-            kioskManager = kioskManager,
             onExitKiosk = onExitKiosk,
             onOpenNotifications = { currentScreen = KioskNavScreen.NotificationList },
             onOpenNotificationDetail = { item -> currentScreen = KioskNavScreen.NotificationDetail(item) }
@@ -134,7 +133,6 @@ private sealed class KioskNavScreen {
 private fun KioskMainContent(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
-    kioskManager: com.example.kioskopda.kiosk.KioskManager,
     onExitKiosk: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenNotificationDetail: (NotificacionItem) -> Unit
@@ -172,6 +170,24 @@ private fun KioskMainContent(
 
     // IMEI puro para pasarlo al ViewModel
     val rawImei = remember(deviceIdentifier) { deviceIdentifier?.value ?: "" }
+    var isBlockedOnStart by remember { mutableStateOf(false) }
+    var isCheckingBlocked by remember { mutableStateOf(true) }
+    var isCheckingUnblock by remember { mutableStateOf(false) }
+    var alertTitle by remember { mutableStateOf<String?>(null) }
+    var alertMessage by remember { mutableStateOf<String?>(null) }
+    var alertIsSuccess by remember { mutableStateOf(false) }
+
+    LaunchedEffect(rawImei) {
+        if (rawImei.isBlank()) return@LaunchedEffect
+
+        isCheckingBlocked = true
+
+        exitPinViewModel.verificarBloqueoInicial(rawImei) { blocked ->
+            isBlockedOnStart = blocked
+            isCheckingBlocked = false
+        }
+    }
+
     val currentTime by produceState(initialValue = "") {
         val formatter = SimpleDateFormat("h:mm a", Locale.forLanguageTag("es-PA"))
         while (true) {
@@ -301,6 +317,56 @@ private fun KioskMainContent(
         onDispose { cm?.unregisterTorchCallback(callback) }
     }
 
+    if (rawImei.isBlank() || isCheckingBlocked) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color(0xFFEDF2F7)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color(0xFF3182CE))
+        }
+        return
+    }
+
+    if (isBlockedOnStart) {
+        DeviceBlockedScreen(
+            imei = rawImei,
+            isChecking = isCheckingUnblock,
+            isNotifying = false,
+            wasNotified = true,
+            onNotify = {},
+            onCheckUnblock = {
+                isCheckingUnblock = true
+
+                exitPinViewModel.checkUnblock(rawImei) { title, message ->
+                    isCheckingUnblock = false
+
+                    if (title == null && message == null) {
+                        isBlockedOnStart = false
+                    } else {
+                        alertTitle = title ?: "Dispositivo bloqueado"
+                        alertMessage = message ?: "El dispositivo aún continúa bloqueado."
+                        alertIsSuccess = false
+                    }
+                }
+            }
+        )
+
+        if (alertTitle != null && alertMessage != null) {
+            KioskAlertDialog(
+                title = alertTitle ?: "",
+                message = alertMessage ?: "",
+                isSuccess = alertIsSuccess,
+                onDismiss = {
+                    alertTitle = null
+                    alertMessage = null
+                }
+            )
+        }
+
+        return
+    }
 
     Column(
         modifier = modifier
