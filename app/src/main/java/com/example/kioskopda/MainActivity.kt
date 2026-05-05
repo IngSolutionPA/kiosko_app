@@ -23,6 +23,7 @@ import com.example.kioskopda.kiosk.KioskConfig
 import com.example.kioskopda.kiosk.KioskManager
 import com.example.kioskopda.ui.theme.KioskoPDATheme
 import com.example.kioskopda.ui.screens.KioskScreen
+import androidx.compose.runtime.mutableIntStateOf
 
 class MainActivity : ComponentActivity() {
 
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
 
     private var deviceIdentifier by mutableStateOf<DeviceIdentifier?>(null)
 
-    private var refreshBlockCheckKey by mutableStateOf(0)
+    private var refreshBlockCheckKey by mutableIntStateOf(0)
 
     private val adminLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
