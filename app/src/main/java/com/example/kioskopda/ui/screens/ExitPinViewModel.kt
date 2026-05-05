@@ -78,7 +78,7 @@ class ExitPinViewModel : ViewModel() {
                 Log.d("KioskoPIN", "══════════════════════════════════════")
             } catch (e: Exception) {
                 Log.e("KioskoPIN", "🔴 Excepción: ${e.javaClass.simpleName}: ${e.localizedMessage}")
-                _uiState.value = PinUiState.NetworkError("Sin conexión: ${e.localizedMessage}")
+                _uiState.value = PinUiState.NetworkError("Sin conexión: No se pudo conectar con el servidor ")
             }
         }
     }
@@ -107,7 +107,7 @@ class ExitPinViewModel : ViewModel() {
                 onFinished(
                     false,
                     "Sin conexión",
-                    e.localizedMessage ?: "No se pudo conectar con el servidor"
+                    "No se pudo conectar con el servidor"
                 )
             }
         }
@@ -144,7 +144,7 @@ class ExitPinViewModel : ViewModel() {
             } catch (e: Exception) {
                 onResult(
                     "Sin conexión",
-                    e.localizedMessage ?: "No se pudo conectar con el servidor"
+                    "No se pudo conectar con el servidor"
                 )
                 _uiState.value = PinUiState.Blocked("Error")
             }

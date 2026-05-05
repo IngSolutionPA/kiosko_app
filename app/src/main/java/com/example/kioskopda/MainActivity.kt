@@ -25,9 +25,13 @@ import com.example.kioskopda.ui.theme.KioskoPDATheme
 import com.example.kioskopda.ui.screens.KioskScreen
 
 class MainActivity : ComponentActivity() {
+
     private lateinit var kioskManager: KioskManager
     private lateinit var deviceIdentifierProvider: DeviceIdentifierProvider
+
     private var deviceIdentifier by mutableStateOf<DeviceIdentifier?>(null)
+
+    private var refreshBlockCheckKey by mutableStateOf(0)
 
     private val adminLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -49,11 +53,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         kioskManager = KioskManager(this)
+
         if (kioskManager.canUseFullKiosk()) {
             kioskManager.applyKioskPolicies(KioskConfig.allowedPackages)
             kioskManager.startLockTask(this)
         }
+
         deviceIdentifierProvider = DeviceIdentifierProvider(this)
         refreshDeviceIdentifier()
 
@@ -61,21 +68,30 @@ class MainActivity : ComponentActivity() {
         applyImmersiveMode()
 
         onBackPressedDispatcher.addCallback(this) {
-            // Consumimos back para que no se cierre la actividad kiosko.
+            // Bloquea botón atrás
         }
 
         setContent {
             KioskoPDATheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
                     KioskScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
+
                         deviceIdentifier = deviceIdentifier,
                         kioskManager = kioskManager,
+
+                        refreshBlockCheckKey = refreshBlockCheckKey,
+
                         onExitKiosk = {
                             kioskManager.stopLockTask(this)
-                            Toast.makeText(this, getString(R.string.kiosk_exit_success), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this,
+                                getString(R.string.kiosk_exit_success),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     )
                 }
@@ -87,7 +103,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        refreshBlockCheckKey++
+
         applyImmersiveMode()
+
         if (kioskManager.canUseFullKiosk()) {
             kioskManager.applyKioskPolicies(KioskConfig.allowedPackages)
             kioskManager.startLockTask(this)
@@ -97,7 +117,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        // Liberar lock task para que ADB/Android Studio pueda reinstalar sin errores
         runCatching { stopLockTask() }
         super.onDestroy()
     }
@@ -111,9 +130,14 @@ class MainActivity : ComponentActivity() {
 
     private fun applyImmersiveMode() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(
+                WindowInsetsCompat.Type.statusBars() or
+                        WindowInsetsCompat.Type.navigationBars()
+            )
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
 
@@ -140,22 +164,4 @@ class MainActivity : ComponentActivity() {
     private fun refreshDeviceIdentifier() {
         deviceIdentifier = deviceIdentifierProvider.load()
     }
-
-    private fun showDeviceOwnerInstructions() {
-        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val command = "adb shell dpm set-device-owner com.example.kioskopda/.admin.KioskDeviceAdminReceiver"
-
-        android.app.AlertDialog.Builder(this)
-            .setTitle(getString(R.string.device_owner_instructions_title))
-            .setMessage(getString(R.string.device_owner_instructions))
-            .setPositiveButton(getString(R.string.copy_command)) { _, _ ->
-                val clip = android.content.ClipData.newPlainText("Device Owner Command", command)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, getString(R.string.command_copied), Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
-    }
 }
-
-

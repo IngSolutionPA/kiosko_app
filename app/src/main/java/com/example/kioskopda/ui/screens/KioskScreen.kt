@@ -98,6 +98,7 @@ fun KioskScreen(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
     kioskManager: com.example.kioskopda.kiosk.KioskManager,
+    refreshBlockCheckKey: Int,
     onExitKiosk: () -> Unit,
 ) {
     // Navigation state
@@ -107,6 +108,7 @@ fun KioskScreen(
         is KioskNavScreen.Main -> KioskMainContent(
             modifier = modifier,
             deviceIdentifier = deviceIdentifier,
+            refreshBlockCheckKey = refreshBlockCheckKey,
             onExitKiosk = onExitKiosk,
             onOpenNotifications = { currentScreen = KioskNavScreen.NotificationList },
             onOpenNotificationDetail = { item -> currentScreen = KioskNavScreen.NotificationDetail(item) }
@@ -133,6 +135,7 @@ private sealed class KioskNavScreen {
 private fun KioskMainContent(
     modifier: Modifier = Modifier,
     deviceIdentifier: DeviceIdentifier?,
+    refreshBlockCheckKey: Int,
     onExitKiosk: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenNotificationDetail: (NotificacionItem) -> Unit
@@ -177,7 +180,7 @@ private fun KioskMainContent(
     var alertMessage by remember { mutableStateOf<String?>(null) }
     var alertIsSuccess by remember { mutableStateOf(false) }
 
-    LaunchedEffect(rawImei) {
+    LaunchedEffect(rawImei, refreshBlockCheckKey) {
         if (rawImei.isBlank()) return@LaunchedEffect
 
         isCheckingBlocked = true
@@ -1007,6 +1010,8 @@ fun KioskPreview() {
                 source = DeviceIdentifierSource.IMEI
             ),
             kioskManager = com.example.kioskopda.kiosk.KioskManager(context),
+
+            refreshBlockCheckKey = 0,
             onExitKiosk = {}
         )
     }
