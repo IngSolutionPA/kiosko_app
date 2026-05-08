@@ -321,14 +321,7 @@ private fun KioskMainContent(
     }
 
     if (rawImei.isBlank() || isCheckingBlocked) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(Color(0xFFEDF2F7)),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = Color(0xFF3182CE))
-        }
+        BootSplashScreen()
         return
     }
 
